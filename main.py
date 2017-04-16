@@ -1,18 +1,12 @@
+# Python modules
 import imgurpython as ip
 import requests
 import argparse
-# Regular Experesions are overkill
+import os
 
-# CONFIG
-Client_ID = ''
-Client_Secret = ''
-Desired_Folder_Path = 'C:/Users/Apollo/Downloads'
+# Dev defined modules
+import config
 
-
-#TEST_ALBUM_URL = 'http://imgur.com/gallery/zAiSv'
-TEST_ALBUM_URL = 'http://imgur.com/a/zAiSv'
-TEST_IMAGE_URL = 'http://i.imgur.com/Dsi5LYO.png'
-#TEST_ALBUM_URL = 'ddd'
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Download images off Imgur to a folder of your choice!')
     parser.add_argument('--folder', '-f', metavar = 'FOLDER_PATH', type = str, nargs = '?', help = 'Change desired folder path')
@@ -22,9 +16,9 @@ def parse_arguments():
     return parser.parse_args()
 
 class Downloader:
-    def __init__(self, client_id, client_secret, desired_folder_path):
+    def __init__(self, client_id, client_secret, folder_path):
         self.client = ip.ImgurClient(client_id, client_secret)
-        self.desired_folder_path = desired_folder_path
+        self.desired_folder_path = self.check_folder_path(folder_path)
 
     def parse_for_gallery_id(self, url):
 
@@ -52,10 +46,11 @@ class Downloader:
             return None
 
 
-    def check_desired_folder_path(self):
-
-        if self.desired_folder_path[-1:] != '/':
-            self.desired_folder_path += '/'
+    def check_folder_path(self, path):
+        """ Checks if the last char of the path has a '/' to complete the extension """
+        if path[-1:] != '/':
+            path += '/'
+        return path
 
     def download_album(self, url = ''):
         ID = self.parse_for_gallery_id(url)
@@ -67,34 +62,50 @@ class Downloader:
         # If not album
         try:
             for image in self.client.get_album_images(ID):
-                self.download_image( image.link )
+                self.download_image( image.link, self.client.get_album(ID).title )
         # Then it's a gallery
         except ip.helpers.error.ImgurClientError:
-            self.download_image ( self.client.gallery_item(ID).link )
+            print (self.client.gallery_item(ID).link)
+            self.download_image ( self.client.gallery_item(ID).link, self.client.get_album(ID).title )
 
-    def download_image(self, url = ''):
-        self.check_desired_folder_path()
+    def download_image(self, url = '', directory_name = ''):
+
 
         req = requests.get(url, stream = True)
 
         if req.status_code == 200:
 
-            link_name = url[url.rfind('/'):]
+            link_name = url[url.rfind('/') + 1:]
 
-            with open(self.desired_folder_path + link_name, 'wb') as image_file:
+            # If directory_name is given, make it the new folder name
+            if directory_name != '':
+                # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
+                directory_name = directory_name.strip('\\/:*?"<>|.')
+                directory_name = self.desired_folder_path + directory_name
+                directory_name = self.check_folder_path(directory_name)
+            # Else make the desired_folder_path the folder to download in
+            else:
+                directory_name = self.desired_folder_path
+
+            """ Check if directory exists """
+            if not os.path.exists(directory_name):
+                os.makedirs(directory_name)
+
+            with open(directory_name + link_name, 'wb') as image_file:
                 for chunk in req:
                     image_file.write(chunk)
 
 
-    def change_folder(self):
-        pass
+    def change_folder(self, folder_path):
+        self.desired_folder_path = self.check_folder_path(folder_path)
+
 
 
 if __name__ == '__main__':
     args = parse_arguments()
 
 
-    downloader = Downloader(client_id = Client_ID, client_secret = Client_Secret, desired_folder_path = Desired_Folder_Path)
+    downloader = Downloader(client_id = config.Client_ID, client_secret = config.Client_Secret, folder_path = config.Desired_Folder_Path)
 
     if (args.folder != None):
         downloader.change_folder(args.folder)
