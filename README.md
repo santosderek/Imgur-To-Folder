@@ -1,5 +1,8 @@
 # Imgur-To-Folder
 Download Imgur albums and images to desired folder
+
+[Gif of an example](https://gfycat.com/EvilHeftyGavial)
+
 ***
 ### How to install:
 
