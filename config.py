@@ -5,4 +5,4 @@ Client_Secret = 'SECRET_HERE'
 # Script Options
 
 """ Default folder to download to """
-Desired_Folder_Path = 'C:/Users/Apollo/Downloads'
+Desired_Folder_Path = '.'
