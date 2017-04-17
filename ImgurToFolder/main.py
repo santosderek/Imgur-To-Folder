@@ -45,6 +45,13 @@ class Downloader:
         else:
             return None
 
+    def replace_characters(self, word):
+        # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
+        invalid_characters = ['\\','/',':','*','?','"','<','>','|','.']
+        for character in invalid_characters:
+            word = word.replace(character, '')
+
+        return word
 
     def check_folder_path(self, path):
         """ Checks if the last char of the path has a '/' to complete the extension """
@@ -74,18 +81,26 @@ class Downloader:
 
         if req.status_code == 200:
 
+            #Link names
             if album_position == 0:
                 link_name = url[url.rfind('/') + 1:]
             else:
+                # First erase invalid characters
+                link_name = directory_name + ' - ' + str( album_position )
+                link_name = self.replace_characters(link_name)
+
+                # Then add file_extension
                 file_extension = url[url.rfind('.'):]
-                link_name = directory_name + ' - ' + str( album_position ) + file_extension
+                link_name += file_extension
 
             # If directory_name is given, make it the new folder name
             if directory_name != '':
-                # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
-                directory_name = directory_name.strip('\\/:*?"<>|.')
+
+                directory_name = self.replace_characters(directory_name)
                 directory_name = self.desired_folder_path + directory_name
                 directory_name = self.check_folder_path(directory_name)
+
+
             # Else make the desired_folder_path the folder to download in
             else:
                 directory_name = self.desired_folder_path
@@ -93,6 +108,7 @@ class Downloader:
             """ Check if directory exists """
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
+
 
             with open(directory_name + link_name, 'wb') as image_file:
                 for chunk in req:
