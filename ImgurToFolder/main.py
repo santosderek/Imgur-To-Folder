@@ -68,8 +68,11 @@ class Downloader:
             print ('ERROR: No album link given')
             return
 
-        if self.client.get_album(ID).title == None:
+        album_title = self.client.get_album(ID).title
+
+        if album_title == None:
             album_title = ID
+
         # If not album
         try:
             for pos, image in enumerate ( self.client.get_album_images(ID) ):
@@ -79,7 +82,7 @@ class Downloader:
         except ip.helpers.error.ImgurClientError:
             self.download_image ( self.client.gallery_item(ID).link, album_title )
 
-    def download_image(self, url = '', directory_name = '', album_position = 0):
+    def download_image(self, url = '', directory_name = None, album_position = 0):
 
         req = requests.get(url, stream = True)
 
@@ -98,7 +101,7 @@ class Downloader:
                 link_name += file_extension
 
             # If directory_name is given, make it the new folder name
-            if directory_name != '':
+            if directory_name != None:
 
                 directory_name = self.replace_characters(directory_name)
                 directory_name = self.desired_folder_path + directory_name
@@ -106,8 +109,11 @@ class Downloader:
 
 
             # Else make the desired_folder_path the folder to download in
-            else:
+            elif config.enable_single_images_folder:
                 directory_name = self.desired_folder_path + 'Single-Images/'
+
+            else:
+                directory_name = self.desired_folder_path
 
             """ Check if directory exists """
             if not os.path.exists(directory_name):
