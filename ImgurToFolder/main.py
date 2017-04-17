@@ -56,7 +56,7 @@ class Downloader:
     def check_folder_path(self, path):
         """ Checks if the last char of the path has a '/' to complete the extension """
         path = path.replace('\\','/')
-        
+
         if path[-1:] != '/':
             path += '/'
         return path
@@ -68,14 +68,16 @@ class Downloader:
             print ('ERROR: No album link given')
             return
 
+        if self.client.get_album(ID).title == None:
+            album_title = ID
         # If not album
         try:
             for pos, image in enumerate ( self.client.get_album_images(ID) ):
-                self.download_image( image.link, self.client.get_album(ID).title, pos + 1 )
+                self.download_image( image.link, album_title, pos + 1 )
+
         # Then it's a gallery
         except ip.helpers.error.ImgurClientError:
-            print (self.client.gallery_item(ID).link)
-            self.download_image ( self.client.gallery_item(ID).link, self.client.get_album(ID).title )
+            self.download_image ( self.client.gallery_item(ID).link, album_title )
 
     def download_image(self, url = '', directory_name = '', album_position = 0):
 
