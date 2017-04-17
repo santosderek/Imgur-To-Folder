@@ -55,6 +55,8 @@ class Downloader:
 
     def check_folder_path(self, path):
         """ Checks if the last char of the path has a '/' to complete the extension """
+        path = path.replace('\\','/')
+        
         if path[-1:] != '/':
             path += '/'
         return path
@@ -103,7 +105,7 @@ class Downloader:
 
             # Else make the desired_folder_path the folder to download in
             else:
-                directory_name = self.desired_folder_path
+                directory_name = self.desired_folder_path + 'Single-Images/'
 
             """ Check if directory exists """
             if not os.path.exists(directory_name):
