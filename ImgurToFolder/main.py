@@ -10,8 +10,8 @@ import config
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Download images off Imgur to a folder of your choice!')
     parser.add_argument('--folder', '-f', metavar = 'FOLDER_PATH', type = str, nargs = '?', help = 'Change desired folder path')
-    parser.add_argument('--album', '-a', metavar = 'ALBUM_URL', type = str, nargs = '?', help = 'Download desired album to folder')
-    parser.add_argument('--image', '-i', metavar = 'IMAGE_URL', type = str, nargs = '?', help = 'Download desired image to folder')
+    parser.add_argument('--album', '-a', metavar = 'ALBUM_URL', type = str, nargs = '+', help = 'Download desired album to folder')
+    parser.add_argument('--image', '-i', metavar = 'IMAGE_URL', type = str, nargs = '+', help = 'Download desired image to folder')
 
     return parser.parse_args()
 
@@ -61,21 +61,24 @@ class Downloader:
 
         # If not album
         try:
-            for image in self.client.get_album_images(ID):
-                self.download_image( image.link, self.client.get_album(ID).title )
+            for pos, image in enumerate ( self.client.get_album_images(ID) ):
+                self.download_image( image.link, self.client.get_album(ID).title, pos + 1 )
         # Then it's a gallery
         except ip.helpers.error.ImgurClientError:
             print (self.client.gallery_item(ID).link)
             self.download_image ( self.client.gallery_item(ID).link, self.client.get_album(ID).title )
 
-    def download_image(self, url = '', directory_name = ''):
-
+    def download_image(self, url = '', directory_name = '', album_position = 0):
 
         req = requests.get(url, stream = True)
 
         if req.status_code == 200:
 
-            link_name = url[url.rfind('/') + 1:]
+            if album_position == 0:
+                link_name = url[url.rfind('/') + 1:]
+            else:
+                file_extension = url[url.rfind('.'):]
+                link_name = directory_name + ' - ' + str( album_position ) + file_extension
 
             # If directory_name is given, make it the new folder name
             if directory_name != '':
@@ -109,9 +112,11 @@ def main():
     if (args.folder != None):
         downloader.change_folder(args.folder)
     if (args.image != None):
-        downloader.download_image(args.image)
+        for image in args.image:
+            downloader.download_image(image)
     if (args.album != None):
-        downloader.download_album(args.album)
+        for album in args.album:
+            downloader.download_album(album)
 
 if __name__ == '__main__':
     main()

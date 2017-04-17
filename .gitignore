@@ -1,2 +1,7 @@
 config.py
-
+build
+dist
+ImgurToFolder.egg-info
+ImgurToFolder/config.py
+ImgurToFolder\config.py
+ImgurToFolder/config.py
