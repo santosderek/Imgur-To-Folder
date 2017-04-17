@@ -1,15 +1,31 @@
 # Imgur-To-Folder
 Download Imgur albums and images to desired folder
-
+***
 ### How to install:
+***Copy repository from github:***
 
-Either download the repository from the green 'Clone or download' button above, or (with git installed) copy and paste the commands bellow.
-
-***Repository developed using Python 3***
+*Repository developed using Python 3*
 
     git clone https://github.com/santosderek/Imgur-To-Folder
     cd Imgur-To-Folder
+
+*Create an Imgur account at http://imgur.com/*
+
+*Next go to https://api.imgur.com/oauth2/addclient and create a new application using a name of your choice, and the authorization type of:*
+
+***OAuth 2 Authorization without a callback URL***
+
+*Complete the rest of the form.*
+
+*Within ImgurToFolder/config.py add in your CLIENT_ID and CLIENT_SECRET found on your http://imgur.com/account/settings/apps page.*
+
+*Next within the command-line type:*
+
     python setup.py install
+
+*Congrats! It's installed. Now you can proceed bellow*
+
+***
 
 ### How to use:
 Base command:
