@@ -13,7 +13,7 @@ Download Imgur albums and images to desired folder
 
 *Next go to https://api.imgur.com/oauth2/addclient and create a new application using a name of your choice, and the authorization type of:*
 
-***OAuth 2 Authorization without a callback URL***
+* OAuth 2 Authorization without a callback URL
 
 *Complete the rest of the form.*
 
