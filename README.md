@@ -41,18 +41,19 @@ Base command:
 
 ***Change folder path to download***
 
-    imgurToFolder --folder FOLDER_PATH_HERE
+    imgurToFolder --folder FOLDER_PATH_HERE | OR | imgurToFolder --f  FOLDER_PATH_HERE
 
 ***Download album/gallery using album url***
 
-    imgurToFolder --album  ALBUM_URL_HERE
+    imgurToFolder --album  ALBUM_URL_HERE | OR | imgurToFolder --a  ALBUM_URL_HERE
 
 ***Download single image using image url***
 
 *--image and -i command are used for i.imgur.com links*
 
-    imgurToFolder --image  IMAGE_URL_HERE
+    imgurToFolder --image  IMAGE_URL_HERE | OR | imgurToFolder --i  IMAGE_URL_HERE
 
+***Newly added: You can now attach as many album or image links at the end of '-a' or '-i' respectively***
 
 Example:
     *Download image of random cat I found*
