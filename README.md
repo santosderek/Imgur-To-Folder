@@ -2,7 +2,7 @@
 Download Imgur albums and images to desired folder
 ***
 ### How to install:
-***Copy repository from github:***
+*Copy repository from github:*
 
 *Repository developed using Python 3*
 
