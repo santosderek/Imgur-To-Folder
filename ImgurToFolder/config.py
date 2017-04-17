@@ -4,8 +4,9 @@ Client_Secret = 'CLIENT_SECRET_HERE'
 
 # Script Options
 
-""" Default folder to download to """
-Desired_Folder_Path = '.'
+# Default folder to download to 
+# r comes before '' in order to consider it a 'raw string' 
+Desired_Folder_Path = r'.'
 
 # Enable Single Images folder
 # Individual images with no albums will be placed in a folder called 'Single Images'
