@@ -1,6 +1,6 @@
 # Imgur Credentials
-Client_ID = '752385c334bfe4a'
-Client_Secret = '52e98e8050f33646d71c2adf38dabca0e15d1bd9'
+Client_ID = 'CLIENT_ID_HERE'
+Client_Secret = 'CLIENT_SECRET_HERE'
 
 # Script Options
 
