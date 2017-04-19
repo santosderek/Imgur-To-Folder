@@ -8,7 +8,7 @@ setup(name='ImgurToFolder',
       url='https://github.com/santosderek/Imgur-To-Folder/',
 
       packages=['ImgurToFolder'],
-      scripts=['ImgurToFolder/main.py','ImgurToFolder/config.py'],
+      scripts=['ImgurToFolder/main.py','ImgurToFolder/config.py', 'ImgurToFolder/downloader.py'],
       entry_points={
         'console_scripts':
             ['imgurToFolder = main:main']
