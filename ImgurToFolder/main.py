@@ -73,17 +73,19 @@ class Downloader:
         if album_title == None:
             album_title = ID
 
+        print ('Downloading album:', album_title, end='')
+        
         # If not album
         try:
             for pos, image in enumerate ( self.client.get_album_images(ID) ):
                 self.download_image( image.link, album_title, pos + 1 )
-
+            
 
         # Then it's a gallery
         except ip.helpers.error.ImgurClientError:
             self.download_image ( self.client.gallery_item(ID).link, album_title )
 
-        print ('"', album_title, '" has finished...')
+        print (' - [FINISHED]')
 
     def download_image(self, url = '', directory_name = None, album_position = 0):
 
@@ -141,15 +143,16 @@ def main():
     if (args.folder != None):
         downloader.change_folder(args.folder)
     if (args.image != None):
-        print ('Downloading single image to: ', downloader.desired_folder_path)
+        print ('Downloading single image to:', downloader.desired_folder_path)
         for image in args.image:
+            print ('Downloading single image:', str(image))
             downloader.download_image(image)
     if (args.album != None):
-        print ('Downloading album(s) to: ', downloader.desired_folder_path)
+        print ('Downloading album(s) to:', downloader.desired_folder_path)
         for album in args.album:
             downloader.download_album(album)
 
-    print('Done.')
+    print('Done.') 
 
 if __name__ == '__main__':
     main()
