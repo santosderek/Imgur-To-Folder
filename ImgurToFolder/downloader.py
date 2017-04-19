@@ -3,6 +3,9 @@ import imgurpython as ip
 import requests
 import os
 
+# Dev defined modules
+import config
+
 class Downloader:
     def __init__(self, client_id, client_secret, folder_path):
         self.client = ip.ImgurClient(client_id, client_secret)
