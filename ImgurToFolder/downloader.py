@@ -68,15 +68,21 @@ class Downloader:
 
         # If not album
         try:
-            for pos, image in enumerate ( self.client.get_album_images(ID) ):
-                self.download_image( image.link, album_title, pos + 1 )
-
-
+            for position, image in enumerate (self.client.get_album(ID).images):
+                self.download_image(image['link'], album_title, position + 1)
+            
+            print (' - [FINISHED]')    
         # Then it's a gallery
         except ip.helpers.error.ImgurClientError:
             self.download_image ( self.client.gallery_item(ID).link, album_title )
+            print (' - [FINISHED]')
 
-        print (' - [FINISHED]')
+        # Knwon bug in imgurpython
+        except Exception as e:
+            print ('\nERROR:', url, 'has failed!', e)
+            
+            
+        
 
     def download_image(self, url = '', directory_name = None, album_position = 0):
 
