@@ -64,7 +64,7 @@ class Downloader:
         if album_title == None:
             album_title = ID
 
-        print ('Downloading album:', album_title, end='')
+        print ('Downloading album:', album_title, end='', flush=True)
 
         # If not album
         try:
