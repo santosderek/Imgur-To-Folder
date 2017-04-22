@@ -62,7 +62,17 @@ class Downloader:
         album_title = self.client.get_album(ID).title
 
         if album_title == None:
-            album_title = ID
+            temp_album = self.client.get_album(ID)
+            section = temp_album.section
+            try: 
+                album_title = self.client.subreddit_image(section, ID).title
+            except Exception as e:
+                album_title = None
+            
+            if album_title == None:
+                album_title = ID
+           
+                
 
         print ('Downloading album:', album_title, end='', flush=True)
 
