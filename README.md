@@ -22,7 +22,7 @@ Download Imgur albums and images to desired folder
 
 *Complete the rest of the form.*
 
-*Within ImgurToFolder/config.py add in your CLIENT_ID and CLIENT_SECRET found on your http://imgur.com/account/settings/apps page.*
+*Within ImgurToFolder/config.py add in your CLIENT_ID, CLIENT_SECRET, found on your http://imgur.com/account/settings/apps page. AND/OR  change the defualt folder path to a folder of your choice, else it will download to whatever folder you execute the program in.*
 
 *Next within the command-line type: (and within the Imgur-To-Folder folder)*
 
@@ -38,6 +38,7 @@ Base command:
     imgurToFolder
 
 #### Following commands can be used:
+
 ***Help page***
 
     imgurToFolder --help
@@ -62,6 +63,16 @@ Example:
     *Download image of random cat I found*
 
     imgurToFolder --folder C:\Users\Apollo\Downloads -i http://i.imgur.com/aauKqQB.jpg
+
+### Tips & Tricks
+
+***Have a static folder to download defaultly to***
+Change the folder path to a folder of your choice before the final install command in order to prevent having to type -f FOLDERPATH every time you want to download something.
+
+In my case my default folder is *C:\Users\Apollo\ImgurDownloads\*
+
+***Direct Gfycat downloader***
+Though this is a Imgur downloaded, you could also download gfycat links if using *fat.gfycat.com* or *thumbs.gfycat.com* domains. 
 
 #### Warning
 
