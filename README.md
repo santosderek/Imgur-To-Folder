@@ -35,7 +35,7 @@ Download Imgur albums and images to desired folder
 ### How to use:
 Base command:
 
-    imgurToFolder
+    imgurToFolder [SOMETHING]
 
 #### Following commands can be used:
 
