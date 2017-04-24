@@ -42,7 +42,7 @@ Base command:
 
     imgurToFolder --help
 
-***Change folder path to download***
+***Temporarily change folder path to download***
 
     imgurToFolder --folder FOLDER_PATH_HERE | OR | imgurToFolder --f  FOLDER_PATH_HERE
 
