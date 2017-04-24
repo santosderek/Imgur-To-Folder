@@ -65,4 +65,4 @@ Example:
 
 #### Warning
 
-imgur.com/r/*** links are not supported yet! - This will just download the HTML code off the Imgur page.
+imgur.com/r/*** subreddit links are not supported yet! - This will just download the HTML code off the Imgur page.
