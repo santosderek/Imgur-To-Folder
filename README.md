@@ -67,11 +67,13 @@ Example:
 ### Tips & Tricks
 
 ***Have a static folder to download defaultly to***
+
 Change the folder path to a folder of your choice before the final install command in order to prevent having to type -f FOLDERPATH every time you want to download something.
 
 In my case my default folder is *C:\Users\Apollo\ImgurDownloads\*
 
 ***Direct Gfycat downloader***
+
 Though this is a Imgur downloaded, you could also download gfycat links if using *fat.gfycat.com* or *thumbs.gfycat.com* domains. 
 
 #### Warning
