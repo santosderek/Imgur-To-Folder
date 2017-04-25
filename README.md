@@ -4,6 +4,12 @@ Download Imgur albums and images to desired folder
 [Gif of an example](https://gfycat.com/EvilHeftyGavial)
 
 ***
+
+*Updated with ability to download all favorited within your account.*
+
+Also working on gifs with .gifv support. Sorry for the inconvience.
+
+***
 ### How to install:
 
 *Repository developed using Python 3*
@@ -22,7 +28,7 @@ Download Imgur albums and images to desired folder
 
 *Complete the rest of the form.*
 
-*Within ImgurToFolder/config.py add in your CLIENT_ID, CLIENT_SECRET, found on your http://imgur.com/account/settings/apps page. AND/OR  change the defualt folder path to a folder of your choice, else it will download to whatever folder you execute the program in.*
+*Within ImgurToFolder/config.py add in your CLIENT_ID and CLIENT_SECRET found on your http://imgur.com/account/settings/apps page.*
 
 *Next within the command-line type: (and within the Imgur-To-Folder folder)*
 
@@ -35,27 +41,30 @@ Download Imgur albums and images to desired folder
 ### How to use:
 Base command:
 
-    imgurToFolder [SOMETHING]
+    imgurToFolder
 
 #### Following commands can be used:
-
 ***Help page***
 
     imgurToFolder --help
 
-***Temporarily change folder path to download***
+***Change folder path to download***
 
-    imgurToFolder --folder FOLDER_PATH_HERE | OR | imgurToFolder -f  FOLDER_PATH_HERE
+    imgurToFolder --folder FOLDER_PATH_HERE | OR | imgurToFolder --f  FOLDER_PATH_HERE
 
 ***Download album/gallery using album url***
 
-    imgurToFolder --album  ALBUM_URL_HERE | OR | imgurToFolder -a  ALBUM_URL_HERE
+    imgurToFolder --album  ALBUM_URL_HERE | OR | imgurToFolder --a  ALBUM_URL_HERE
 
 ***Download single image using image url***
 
 *--image and -i command are used for i.imgur.com links*
 
-    imgurToFolder --image  IMAGE_URL_HERE | OR | imgurToFolder -i  IMAGE_URL_HERE
+    imgurToFolder --image  IMAGE_URL_HERE | OR | imgurToFolder --i  IMAGE_URL_HERE
+
+***Download all favorited Imgur links within your profile***
+
+    imgurToFolder --download-all-favorites [username] | OR | imgurToFolder -df [username]
 
 ***Newly added: You can now attach as many album or image links at the end of '-a' or '-i' respectively***
 
@@ -64,18 +73,14 @@ Example:
 
     imgurToFolder --folder C:\Users\Apollo\Downloads -i http://i.imgur.com/aauKqQB.jpg
 
-### Tips & Tricks
-
-***Have a static folder to download defaultly to***
-
-Change the folder path to a folder of your choice before the final install command in order to prevent having to type -f FOLDERPATH every time you want to download something.
-
-In my case my default folder is *C:\Users\Apollo\ImgurDownloads\*
-
-***Direct Gfycat downloader***
-
-Though this is a Imgur downloaded, you could also download gfycat links if using *fat.gfycat.com* or *thumbs.gfycat.com* domains. 
-
 #### Warning
 
-imgur.com/r/*** subreddit links are not supported yet! - This will just download the HTML code off the Imgur page.
+imgur.com/r/*** links are not supported yet! - This will just download the HTML code off the Imgur page.
+
+### Clarification
+
+*Imgur-To-Folder does NOT store any username or password data. This is what the client_id and client_secret are for.*
+
+*Though, Imgur themselves will ask you to verify that you want to allow my program to use your account info.*
+
+*ALL sensitive data does NOT go to me in anyway, shape, or form.*
