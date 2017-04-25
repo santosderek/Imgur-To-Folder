@@ -1,6 +1,7 @@
 # Imgur Credentials
 Client_ID = 'CLIENT_ID_HERE'
 Client_Secret = 'CLIENT_SECRET_HERE'
+Refresh_Token = ''
 
 # Script Options
 
