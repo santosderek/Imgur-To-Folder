@@ -9,7 +9,11 @@ import config
 
 class Downloader:
     def __init__(self, client_id, client_secret, folder_path, refresh_token = ''):
-        self.client = ip.ImgurClient(client_id, client_secret, refresh_token=refresh_token)
+        if refresh_token == '' or refresh_token == None:
+            self.client = ip.ImgurClient(client_id, client_secret)
+        else:
+            self.client = ip.ImgurClient(client_id, client_secret, refresh_token=refresh_token)
+
         self.desired_folder_path = self.check_folder_path(folder_path)
         self.refresh_token = refresh_token
         self.is_authenticated = False
