@@ -24,12 +24,14 @@ def main():
                             folder_path   = config.Desired_Folder_Path,
                             refresh_token = config.Refresh_Token)
 
-    if args.urls != None:
-        for url in args.urls:
-            downloader.detect_automatically(url)
+
 
     if (args.folder != None):
         downloader.change_folder(args.folder)
+
+    if args.urls != None:
+        for url in args.urls:
+            downloader.detect_automatically(url)
 
     if (args.image != None):
         print ('Downloading single image to:', downloader.desired_folder_path)
