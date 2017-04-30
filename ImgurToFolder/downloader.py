@@ -4,6 +4,7 @@ import requests
 # Python modules
 import os
 import shutil
+
 # Dev defined modules
 import config
 
@@ -50,7 +51,7 @@ class Downloader:
 
     def replace_characters(self, word):
         # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
-        invalid_characters = ['\\','/',':','*','?','"','<','>','|','.']
+        invalid_characters = ['\\','\'','/',':','*','?','"','<','>','|','.']
         for character in invalid_characters:
             word = word.replace(character, '')
 
@@ -71,10 +72,12 @@ class Downloader:
 
         # Communicating to user
         pin_url = self.client.get_auth_url('pin')
+
         print ()
         print ('Please go to specified URL: (Imgur-To-Folder does NOT collect any username or password data)')
         print (pin_url)
         print ()
+        
         pin = str(input('Plase type or paste the pin given here:'))
 
         # Authenicate
@@ -113,6 +116,24 @@ class Downloader:
         with open(location,'w') as config_file:
             config_file.writelines(data)
 
+    def detect_automatically(self, url = None):
+
+        if url == '' or url == None:
+            return
+
+        elif (url.find('imgur.com/gallery/') != -1) or (url.find('imgur.com/a/') != -1):
+
+            response = self.parse_for_gallery_id(url)
+
+            if response == None:
+                print ('ERROR: ID parsing failed for album / gallery url:', url)
+                return
+
+            self.download_album(response)
+
+        else:
+            self.download_image(url)
+
     def download_all_favorites(self, username):
 
         favorites = self.client.get_account_favorites(username)
@@ -135,20 +156,43 @@ class Downloader:
             print ('ERROR: No album link given')
             return
 
-        album_title = self.client.get_album(ID).title
+        try:
+            album_title = self.client.get_album(ID).title
+        except ip.helpers.error.ImgurClientError:
+            pass
+
+        try:
+            album_title = self.client.gallery_item(ID).title
+        except ip.helpers.error.ImgurClientError:
+            album_title = None
+
 
         if album_title == None:
-            temp_album = self.client.get_album(ID)
-            section = temp_album.section
-            try:
-                album_title = self.client.subreddit_image(section, ID).title
-            except Exception as e:
-                album_title = None
 
+            # Try to get the album
+            try:
+                section = self.client.get_album(ID).section
+            except ip.helpers.error.ImgurClientError:
+                section = None
+
+            # If above failed then bellow should work
+            try:
+                if section == None:
+                    section = self.client.gallery_item(ID).section
+            except ip.helpers.error.ImgurClientError:
+                section = None
+
+            if section != None:
+                try:
+                    album_title = self.client.subreddit_image(section, ID).title
+                except ip.helpers.error.ImgurClientError:
+                    album_title = None
+
+            # If still None
             if album_title == None:
                 album_title = ID
 
-
+        album_title = self.replace_characters(album_title)
 
         print ('Downloading album:', album_title, end='', flush=True)
 
@@ -158,10 +202,17 @@ class Downloader:
                 self.download_image(image['link'], album_title, position + 1)
 
             print (' - [FINISHED]')
+
         # Then it's a gallery
         except ip.helpers.error.ImgurClientError:
+            pass
+
+        try:
+
             self.download_image ( self.client.gallery_item(ID).link, album_title )
             print (' - [FINISHED]')
+        except ip.helpers.error.ImgurClientError as e:
+            print ('\nERROR:', e)
 
         # Knwon bug in imgurpython
         except Exception as e:
@@ -172,6 +223,8 @@ class Downloader:
 
     def download_image(self, url = '', directory_name = None, album_position = 0):
 
+        # Length of a file name
+        MAX_NAME_LENGTH = 60
 
         req = requests.get(url, stream = True)
 
@@ -180,6 +233,7 @@ class Downloader:
             #Link names
             if album_position == 0:
                 link_name = url[url.rfind('/') + 1:]
+
             else:
                 # First erase invalid characters
                 link_name = directory_name + ' - ' + str( album_position )
@@ -192,8 +246,19 @@ class Downloader:
             # If directory_name is given, make it the new folder name
             if directory_name != None:
 
+                if len(directory_name) > MAX_NAME_LENGTH:
+                    directory_name = directory_name[:MAX_NAME_LENGTH]
+
                 directory_name = self.replace_characters(directory_name)
-                directory_name = self.desired_folder_path + directory_name
+
+                # If directory not given then get the absolute path
+                if self.desired_folder_path == '.' or './':
+                    absolute_path = os.getcwd()
+                    absolute_path = self.check_folder_path(absolute_path)
+                    directory_name = absolute_path + directory_name
+                else:
+                    directory_name = self.desired_folder_path + directory_name
+
                 directory_name = self.check_folder_path(directory_name)
 
 
@@ -204,10 +269,13 @@ class Downloader:
             else:
                 directory_name = self.desired_folder_path
 
+
+
+            if len(link_name) > MAX_NAME_LENGTH:
+                link_name = link_name[:MAX_NAME_LENGTH]
             # Check if directory exists
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
-
 
             with open(directory_name + link_name, 'wb') as image_file:
                 req.raw.decode_content = True
