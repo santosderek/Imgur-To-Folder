@@ -5,6 +5,7 @@ Download Imgur albums and images to desired folder
 
 ***
 
+*Updated with ability to download without the use of -a or -i. It should just automatically detect.*
 *Updated with ability to download all favorited within your account.*
 
 Also working on gifs with .gifv support. Sorry for the inconvience.
@@ -41,22 +42,28 @@ Also working on gifs with .gifv support. Sorry for the inconvience.
 ### How to use:
 Base command:
 
-    imgurToFolder
+    imgurToFolder [urls]
 
 #### Following commands can be used:
 ***Help page***
 
     imgurToFolder --help
 
+***Automatic Url Detection***
+
+*Automatically downloads Imgur links without user specifically declaring the imgur type.*
+
+    imgurtofolder [urls]
+
 ***Change folder path to download***
 
     imgurToFolder --folder FOLDER_PATH_HERE | OR | imgurToFolder --f  FOLDER_PATH_HERE
 
-***Download album/gallery using album url***
+***Specifically download album/gallery using album url***
 
     imgurToFolder --album  ALBUM_URL_HERE | OR | imgurToFolder --a  ALBUM_URL_HERE
 
-***Download single image using image url***
+***Specifically download single image using image url***
 
 *--image and -i command are used for i.imgur.com links*
 
@@ -70,6 +77,10 @@ Base command:
 
 Example:
     *Download image of random cat I found*
+
+    imgurtofolder --folder C:\Users\Apollo\Downloads http://i.imgur.com/aauKqQB.jpg
+
+    | OR |
 
     imgurToFolder --folder C:\Users\Apollo\Downloads -i http://i.imgur.com/aauKqQB.jpg
 
