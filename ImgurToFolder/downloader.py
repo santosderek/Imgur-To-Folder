@@ -77,7 +77,7 @@ class Downloader:
         print ('Please go to specified URL: (Imgur-To-Folder does NOT collect any username or password data)')
         print (pin_url)
         print ()
-        
+
         pin = str(input('Plase type or paste the pin given here:'))
 
         # Authenicate
@@ -132,7 +132,10 @@ class Downloader:
             self.download_album(response)
 
         else:
+            print ('Downloading image: ', url, end='', flush=True)
             self.download_image(url)
+            print (' - [FINISHED]')
+
 
     def download_all_favorites(self, username):
 
@@ -156,67 +159,72 @@ class Downloader:
             print ('ERROR: No album link given')
             return
 
+        # Try to get album_title
+
         try:
             album_title = self.client.get_album(ID).title
         except ip.helpers.error.ImgurClientError:
-            pass
-
-        try:
-            album_title = self.client.gallery_item(ID).title
-        except ip.helpers.error.ImgurClientError:
             album_title = None
 
-
         if album_title == None:
+            try:
+                album_title = self.client.gallery_item(ID).title
+            except ip.helpers.error.ImgurClientError:
+                pass
 
-            # Try to get the album
+
+            # Try to get album section, to use later
             try:
                 section = self.client.get_album(ID).section
             except ip.helpers.error.ImgurClientError:
                 section = None
 
-            # If above failed then bellow should work
-            try:
-                if section == None:
+            # Try to get gallery section if none was given earlier
+            if section == None:
+                try:
                     section = self.client.gallery_item(ID).section
-            except ip.helpers.error.ImgurClientError:
-                section = None
+                except ip.helpers.error.ImgurClientError:
+                    section = None
 
+            # If section was given at any point earlier use it to find the title
+            # Else, make album_title == None
             if section != None:
                 try:
                     album_title = self.client.subreddit_image(section, ID).title
                 except ip.helpers.error.ImgurClientError:
                     album_title = None
 
-            # If still None
-            if album_title == None:
-                album_title = ID
+        # If album_title still equals None, make the album title the ID
+        if album_title == None:
+            album_title = ID
 
+        # Look for invalid characters
         album_title = self.replace_characters(album_title)
 
+        # Alert the user
         print ('Downloading album:', album_title, end='', flush=True)
 
-        # If not album
+        # This is a bool incase the get_album function fails. If set to true,
+        # the program will check if it was a gallery.
+        check_if_gallery = False
+
+        # Try to see if it is an album
         try:
             for position, image in enumerate (self.client.get_album(ID).images):
                 self.download_image(image['link'], album_title, position + 1)
 
             print (' - [FINISHED]')
 
-        # Then it's a gallery
+
         except ip.helpers.error.ImgurClientError:
-            pass
+            check_if_gallery = True
 
-        try:
-
-            self.download_image ( self.client.gallery_item(ID).link, album_title )
-            print (' - [FINISHED]')
-        except ip.helpers.error.ImgurClientError as e:
-            print ('\nERROR:', e)
-
-        # Knwon bug in imgurpython
-        except Exception as e:
-            print ('\nERROR:', url, 'has failed!', e)
+        if (check_if_gallery):
+            try:
+                self.download_image ( self.client.gallery_item(ID).link, album_title )
+                print (' - [FINISHED]')
+            except ip.helpers.error.ImgurClientError as e:
+                print ('\nERROR:', e)
 
 
 
@@ -224,7 +232,11 @@ class Downloader:
     def download_image(self, url = '', directory_name = None, album_position = 0):
 
         # Length of a file name
-        MAX_NAME_LENGTH = 60
+        MAX_NAME_LENGTH = 65
+
+        # changes .gifv links to .gif since imgur supports this transfer
+        if url[-4:] == 'gifv':
+            url = url[:-4] + 'gif'
 
         req = requests.get(url, stream = True)
 
@@ -236,7 +248,7 @@ class Downloader:
 
             else:
                 # First erase invalid characters
-                link_name = directory_name + ' - ' + str( album_position )
+                link_name = directory_name[:MAX_NAME_LENGTH] + ' - ' + str( album_position )
                 link_name = self.replace_characters(link_name)
 
                 # Then add file_extension
@@ -271,11 +283,19 @@ class Downloader:
 
 
 
-            if len(link_name) > MAX_NAME_LENGTH:
-                link_name = link_name[:MAX_NAME_LENGTH]
+
+
+
+            #if len(link_name) > MAX_NAME_LENGTH:
+            #
+            #    link_name = link_name[:MAX_NAME_LENGTH]
             # Check if directory exists
+
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
+
+
+
 
             with open(directory_name + link_name, 'wb') as image_file:
                 req.raw.decode_content = True
