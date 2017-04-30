@@ -264,7 +264,7 @@ class Downloader:
                 directory_name = self.replace_characters(directory_name)
 
                 # If directory not given then get the absolute path
-                if self.desired_folder_path == '.' or './':
+                if self.desired_folder_path == '.' or self.desired_folder_path == './':
                     absolute_path = os.getcwd()
                     absolute_path = self.check_folder_path(absolute_path)
                     directory_name = absolute_path + directory_name

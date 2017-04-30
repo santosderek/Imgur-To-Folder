@@ -27,6 +27,7 @@ def main():
 
 
     if (args.folder != None):
+
         downloader.change_folder(args.folder)
 
     if args.urls != None:
