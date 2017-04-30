@@ -5,12 +5,13 @@ Download Imgur albums and images to desired folder
 
 ***
 
-*Updated with ability to download without the use of -a or -i. It should just automatically detect.*
+### Updates:
+*Updated with ability to download without the use of -a or -i. It should automatically detect.*
+
 *Updated with ability to download all favorited within your account.*
 
-Also working on gifs with .gifv support. Sorry for the inconvience.
+*There is now .gifv imgur link support.*
 
-***
 ### How to install:
 
 *Repository developed using Python 3*
@@ -42,7 +43,7 @@ Also working on gifs with .gifv support. Sorry for the inconvience.
 ### How to use:
 Base command:
 
-    imgurToFolder [urls]
+    imgurToFolder
 
 #### Following commands can be used:
 ***Help page***
