@@ -4,6 +4,7 @@ import requests
 # Python modules
 import os
 import shutil
+import re
 
 # Dev defined modules
 import config
@@ -226,19 +227,31 @@ class Downloader:
             except ip.helpers.error.ImgurClientError as e:
                 print ('\nERROR:', e)
 
-
-
-
     def download_image(self, url = '', directory_name = None, album_position = 0):
 
         # Length of a file name
         MAX_NAME_LENGTH = 65
-
+        req = None
         # changes .gifv links to .gif since imgur supports this transfer
         if url[-4:] == 'gifv':
             url = url[:-4] + 'gif'
 
-        req = requests.get(url, stream = True)
+        if url.find('gfycat.com') != -1:
+            if re.search(r'gfycat.com/\w*\.gif', url) is None:
+                new_url = 'https://giant.' + re.search(r'gfycat.com/\w*', url).group(0) + '.gif'
+                req = requests.get(new_url, stream = True)
+
+                # Probably fat.gfycat if not succesful
+                if req.status_code != 200:
+                    new_url = 'https://fat.' + re.search(r'gfycat.com/\w*', url).group(0) + '.gif'
+                    req = requests.get(new_url, stream = True)
+
+                url = new_url
+            else:
+                req = requests.get(url, stream = True)
+
+        else:
+            req = requests.get(url, stream = True)
 
         if req.status_code == 200:
 
@@ -282,29 +295,12 @@ class Downloader:
                 directory_name = self.desired_folder_path
 
 
-
-
-
-
-            #if len(link_name) > MAX_NAME_LENGTH:
-            #
-            #    link_name = link_name[:MAX_NAME_LENGTH]
-            # Check if directory exists
-
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
-
-
-
 
             with open(directory_name + link_name, 'wb') as image_file:
                 req.raw.decode_content = True
                 shutil.copyfileobj(req.raw, image_file)
-
-            #with open(directory_name + link_name, 'wb') as image_file:
-            #    for chunk in req:
-            #        image_file.write(chunk)
-
 
     def change_folder(self, folder_path):
         self.desired_folder_path = self.check_folder_path(folder_path)
