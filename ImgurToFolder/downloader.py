@@ -133,7 +133,7 @@ class Downloader:
             self.download_album(response)
 
         else:
-            print ('Downloading image: ', url, end='', flush=True)
+            print ('Downloading image:', url, end='', flush=True)
             self.download_image(url)
             print (' - [FINISHED]')
 
