@@ -4,6 +4,7 @@ import requests
 # Python modules
 import os
 import shutil
+import re
 
 # Dev defined modules
 from config import configuration
@@ -131,7 +132,11 @@ class Downloader:
             self.download_album(response)
 
         else:
+<<<<<<< HEAD
             print('Downloading image: ', url, end='', flush=True)
+=======
+            print ('Downloading image:', url, end='', flush=True)
+>>>>>>> origin/master
             self.download_image(url)
             print(' - [FINISHED]')
 
@@ -203,22 +208,57 @@ class Downloader:
             for position, image in enumerate(self.client.get_album(ID).images):
                 self.download_image(image['link'], album_title, position + 1)
 
+<<<<<<< HEAD
             print(' - [FINISHED]')
 
         except ip.helpers.error.ImgurClientError as e:
             print('ERROR: Could not finish album download', image['link'], e)
 
+=======
+            print (' - [FINISHED]')
+
+
+        except ip.helpers.error.ImgurClientError:
+            check_if_gallery = True
+
+        if (check_if_gallery):
+            try:
+                self.download_image ( self.client.gallery_item(ID).link, album_title )
+                print (' - [FINISHED]')
+            except ip.helpers.error.ImgurClientError as e:
+                print ('\nERROR:', e)
+>>>>>>> origin/master
 
     def download_image(self, url = '', directory_name = None, album_position = 0):
 
         # Max length of a file name [Windows]
         MAX_NAME_LENGTH = 65
+<<<<<<< HEAD
 
         # Changes .gifv links to .gif since imgur supports this transfer
+=======
+        req = None
+        # changes .gifv links to .gif since imgur supports this transfer
+>>>>>>> origin/master
         if url[-4:] == 'gifv':
             url = url[:-4] + 'gif'
 
-        req = requests.get(url, stream = True)
+        if url.find('gfycat.com') != -1:
+            if re.search(r'gfycat.com/\w*\.gif', url) is None:
+                new_url = 'https://giant.' + re.search(r'gfycat.com/\w*', url).group(0) + '.gif'
+                req = requests.get(new_url, stream = True)
+
+                # Probably fat.gfycat if not succesful
+                if req.status_code != 200:
+                    new_url = 'https://fat.' + re.search(r'gfycat.com/\w*', url).group(0) + '.gif'
+                    req = requests.get(new_url, stream = True)
+
+                url = new_url
+            else:
+                req = requests.get(url, stream = True)
+
+        else:
+            req = requests.get(url, stream = True)
 
         if req.status_code == 200:
 
@@ -262,6 +302,7 @@ class Downloader:
             else:
                 directory_name = self.desired_folder_path
 
+<<<<<<< HEAD
             # Make directory if not existed
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
@@ -272,6 +313,16 @@ class Downloader:
                 shutil.copyfileobj(req.raw, image_file)
         else:
             print('ERROR: Could not find url!', url)
-            
+
+=======
+
+            if not os.path.exists(directory_name):
+                os.makedirs(directory_name)
+
+            with open(directory_name + link_name, 'wb') as image_file:
+                req.raw.decode_content = True
+                shutil.copyfileobj(req.raw, image_file)
+
+>>>>>>> origin/master
     def change_folder(self, folder_path):
         self.desired_folder_path = self.check_folder_path(folder_path)
