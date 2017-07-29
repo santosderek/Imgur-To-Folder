@@ -26,10 +26,11 @@ def parse_arguments():
 def main():
     args = parse_arguments()
 
-    downloader = Downloader(client_id=configuration['client_id'],
-                            client_secret=configuration['client_secret'],
-                            folder_path=configuration['download_folder_path'],
-                            refresh_token=configuration['refresh_token'])
+    downloader = Imgur_Downloader(client_id=configuration['client_id'],
+                                  client_secret=configuration['client_secret'],
+                                  folder_path=configuration['download_folder_path'],
+                                  refresh_token=configuration['refresh_token'],
+                                  single_images_folder=configuration['single_images_folder'])
 
     if args.folder is not None:
         downloader.change_folder(args.folder)
