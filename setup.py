@@ -12,10 +12,11 @@ setup(name='ImgurToFolder',
                'ImgurToFolder/downloader.py'],
       entry_points={
           'console_scripts':
-          ['imgurToFolder = main:main']
+              ['imgurToFolder = main:main',
+               'itf = main:main']
       },
       install_requires=[
-          'requests==2.13.0',
+          'requests',
           'imgurpython==1.1.7'
       ]
       )
