@@ -3,7 +3,7 @@ import argparse
 
 # Dev defined modules
 from config import configuration
-from downloader import *
+from imgur_downloader import *
 
 
 def parse_arguments():

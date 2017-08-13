@@ -9,7 +9,7 @@ setup(name='ImgurToFolder',
       packages=['imgurtofolder'],
       scripts=['ImgurToFolder/main.py',
                'ImgurToFolder/config.py',
-               'ImgurToFolder/downloader.py'],
+               'ImgurToFolder/imgur_downloader.py'],
       entry_points={
           'console_scripts':
               ['imgurToFolder = main:main',
