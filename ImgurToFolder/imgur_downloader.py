@@ -224,11 +224,10 @@ class Imgur_Downloader:
             try:
                 self.download_image(image['link'], album_title, position + 1)
 
-                print(' - [FINISHED]')
-
             except ip.helpers.error.ImgurClientError as e:
                 print('ERROR: Could not finish album download',
                       image['link'], e)
+        print(' - [FINISHED]')
 
     def download_image(self, url='', directory_name=None, album_position=0):
 
