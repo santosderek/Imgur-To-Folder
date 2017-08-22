@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='ImgurToFolder',
-      version='0.1',
+      version='0.2',
       description='Imgur Downloader to a folder of your choice.',
       author='Derek Santos',
       license='The MIT License (MIT)',
@@ -12,8 +12,8 @@ setup(name='ImgurToFolder',
                'ImgurToFolder/imgur_downloader.py'],
       entry_points={
           'console_scripts':
-              ['imgurToFolder = main:main',
-               'itf = main:main']
+              ['imgurToFolder = imgurtofolder.main:main',
+               'itf = imgurtofolder.main:main']
       },
       install_requires=[
           'requests',
