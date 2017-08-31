@@ -74,17 +74,6 @@ Base command:
 
     imgurToFolder --download-all-favorites [username] | OR | imgurToFolder -df [username]
 
-***Newly added: You can now attach as many album or image links at the end of '-a' or '-i' respectively***
-
-Example:
-    *Download image of random cat I found*
-
-    imgurtofolder --folder C:\Users\Apollo\Downloads http://i.imgur.com/aauKqQB.jpg
-
-    | OR |
-
-    imgurToFolder --folder C:\Users\Apollo\Downloads -i http://i.imgur.com/aauKqQB.jpg
-
 #### Warning
 
 imgur.com/r/*** links are not supported yet! - This will just download the HTML code off the Imgur page.
