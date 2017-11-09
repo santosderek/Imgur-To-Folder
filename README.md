@@ -34,7 +34,7 @@ Download Imgur albums and images to desired folder
 
 *Next within the command-line type: (and within the Imgur-To-Folder folder)*
 
-    python setup.py install
+    python3 setup.py install
 
 *Congrats! It's installed. Now you can proceed bellow*
 
