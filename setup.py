@@ -7,13 +7,14 @@ setup(name='ImgurToFolder',
       license='The MIT License (MIT)',
       url='https://github.com/santosderek/Imgur-To-Folder/',
       packages=['imgurtofolder'],
-      scripts=['ImgurToFolder/main.py',
+      scripts=['ImgurToFolder/__main__.py',
+               'ImgurToFolder/__init__.py',
                'ImgurToFolder/config.py',
                'ImgurToFolder/imgur_downloader.py'],
       entry_points={
           'console_scripts':
-              ['imgurToFolder = imgurtofolder.main:main',
-               'itf = imgurtofolder.main:main']
+              ['imgurtofolder = imgurtofolder.__main__:main',
+               'itf = imgurtofolder.__main__:main']
       },
       install_requires=[
           'requests',

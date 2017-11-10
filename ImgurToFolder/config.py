@@ -12,11 +12,10 @@ configuration = {
     'refresh_token': '',
 
     # Path to destination folder.
-    # If left alone, it will download to current folder
-    # when application is running
+    # By default, it will download to current folder
     'download_folder_path': r'.',
 
     # This argument will put single images within a folder called
     # 'Single Images'. If you want this setting off replace True with False
-    'single_images_folder': True
+    'single_images_folder': False
 }
