@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import sys
 
 setup(name='ImgurToFolder',
       version='0.2',
@@ -7,14 +8,13 @@ setup(name='ImgurToFolder',
       license='The MIT License (MIT)',
       url='https://github.com/santosderek/Imgur-To-Folder/',
       packages=['imgurtofolder'],
-      scripts=['ImgurToFolder/__main__.py',
-               'ImgurToFolder/__init__.py',
-               'ImgurToFolder/config.py',
-               'ImgurToFolder/imgur_downloader.py'],
+      scripts=['imgurtofolder/__main__.py',
+               'imgurtofolder/config.py',
+               'imgurtofolder/imgur_downloader.py'],
       entry_points={
           'console_scripts':
-              ['imgurtofolder = imgurtofolder.__main__:main',
-               'itf = imgurtofolder.__main__:main']
+              ['imgurtofolder=imgurtofolder.__main__:main',
+               'itf=imgurtofolder.__main__:main']
       },
       install_requires=[
           'requests',
