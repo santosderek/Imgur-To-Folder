@@ -30,7 +30,7 @@ Download Imgur albums and images to desired folder
 
 *Complete the rest of the form.*
 
-*Within ImgurToFolder/config.py add in your CLIENT_ID and CLIENT_SECRET found on your http://imgur.com/account/settings/apps page.*
+*Within ***ImgurToFolder/config.py*** add in your CLIENT_ID and CLIENT_SECRET found on your http://imgur.com/account/settings/apps page.*
 
 *Next within the command-line type: (and within the Imgur-To-Folder folder)*
 
