@@ -6,6 +6,16 @@ import os
 import shutil
 import re
 
+import logging
+
+
+""" Setting up logging """
+LOG_FORMAT = "[%(levelname)s] %(asctime)s - %(message)s"
+logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
+logging.getLogger("requests").setLevel(logging.WARNING)
+
+LOGGER = logging.getLogger()
+
 
 class Imgur_Downloader:
     def __init__(self,
@@ -16,16 +26,18 @@ class Imgur_Downloader:
                  single_images_folder=True):
 
         # Correcting refesh token
-        if refresh_token == '':
+        if not refresh_token:
             refresh_token = None
+
         # Storing refresh token
         self.refresh_token = refresh_token
 
         self.single_images_folder = single_images_folder
 
         # Creating ImgurClient
-        self.client = ip.ImgurClient(
-            client_id, client_secret, refresh_token=refresh_token)
+        self.client = ip.ImgurClient(client_id,
+                                     client_secret,
+                                     refresh_token=refresh_token)
 
         # Setting desired folder path
         self.desired_folder_path = self.check_folder_path(folder_path)
@@ -89,27 +101,31 @@ class Imgur_Downloader:
         if self.refresh_token is not None:
             return
 
-        # Communicating to user
-        pin_url = self.client.get_auth_url('pin')
-
-        print()
-        print('Please go to specified URL: (Imgur-To-Folder does NOT collect any username or password data)')
-        print(pin_url)
-        print()
-
-        pin = str(input('Plase type or paste the pin given here:'))
-
-        # Authenicate
-        credentials = self.client.authorize(pin, 'pin')
-        self.client.set_user_auth(
-            credentials['access_token'], credentials['refresh_token'])
-
         # Get config.py file
         location = os.path.dirname(os.path.abspath(__file__))
         location = self.check_folder_path(location)
         location += 'config.py'
 
+        LOGGER.debug(location)
+
+        # Communicating to user
+        pin_url = self.client.get_auth_url('pin')
+
+        LOGGER.debug('')
+        LOGGER.debug(
+            'Please go to specified URL: (Imgur-To-Folder does NOT collect any username or password data)')
+        LOGGER.debug(str(pin_url))
+        LOGGER.debug('')
+
+        pin = str(input('Plase type or paste the pin given here:'))
+
+        # Authenicate
+        credentials = self.client.authorize(pin, 'pin')
+        self.client.set_user_auth(credentials['access_token'],
+                                  credentials['refresh_token'])
+
         # Read config.py
+        data = None
         with open(location, 'r') as config_file:
             data = config_file.readlines()
 
@@ -118,15 +134,14 @@ class Imgur_Downloader:
         found_line_number = None
         for line in data:
 
-            if line.find('Refresh_Token') != -1:
+            if line.find('refresh_token') != -1:
                 found_line_number = count
 
             count += 1
 
         # Replace the line
         if found_line_number is not None:
-            line = 'Refresh_Token = \'%s\'' % credentials['refresh_token']
-            line += '\n'
+            line = '\t\'refresh_token\': \'%s\',\n' % credentials['refresh_token']
             data[found_line_number] = line
 
         # Write it back into the file
@@ -151,13 +166,20 @@ class Imgur_Downloader:
             self.download_image(image_class.link)
 
         else:
-            print('Downloading image: ', url, end='', flush=True)
+            LOGGER.info('Downloading image: ' + str(url))
             self.download_image(url)
-            print(' - [FINISHED]')
+            LOGGER.info('Finished image: ' + str(url))
 
-    def download_all_favorites(self, username):
+    def download_all_favorites(self, username, start=0, end=-1):
 
         favorites = self.client.get_account_favorites(username)
+
+        LOGGER.info('Found %d favorites' % len(favorites))
+
+        if end != -1 and start >= 0:
+            favorites = favorites[start:end]
+        else:
+            favorites = favorites[start:]
 
         for selection in favorites:
 
@@ -167,13 +189,14 @@ class Imgur_Downloader:
                 self.download_album(ID)
             # If an image
             else:
-                print('Downloading single image:', selection.link)
+                LOGGER.info('Downloading single image: ' + str(selection.link))
                 self.download_image(selection.link)
+                LOGGER.info('Finished single image: ' + str(selection.link))
 
     def download_album(self, ID):
 
         if ID is None:
-            print('ERROR: No album link given')
+            LOGGER.debug('ERROR: No album link given')
             return
 
         # Try to get album_title
@@ -217,7 +240,7 @@ class Imgur_Downloader:
         album_title = self.replace_characters(album_title)
 
         # Alert the user
-        print('Downloading album:', album_title, end='', flush=True)
+        LOGGER.info('Downloading album: ' + album_title)
 
         # Try to see if it is an album
         for position, image in enumerate(self.client.get_album(ID).images):
@@ -225,9 +248,9 @@ class Imgur_Downloader:
                 self.download_image(image['link'], album_title, position + 1)
 
             except ip.helpers.error.ImgurClientError as e:
-                print('ERROR: Could not finish album download',
-                      image['link'], e)
-        print(' - [FINISHED]')
+                LOGGER.debug(
+                    'ERROR: Could not finish album download' + str(image['link']) + str(e))
+        LOGGER.info('Finished album: ' + album_title)
 
     def download_image(self, url='', directory_name=None, album_position=0):
 
@@ -292,7 +315,7 @@ class Imgur_Downloader:
                 req.raw.decode_content = True
                 shutil.copyfileobj(req.raw, image_file)
         else:
-            print('ERROR: Could not find url!', url)
+            LOGGER.debug('ERROR: Could not find url!' + str(url))
 
     def change_folder(self, folder_path):
         self.desired_folder_path = self.check_folder_path(folder_path)

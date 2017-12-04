@@ -40,13 +40,15 @@ def main():
             downloader.detect_automatically(url)
 
     if args.image is not None:
-        print('Downloading single image to:', downloader.desired_folder_path)
+        LOGGER.info('Downloading single image to: ' +
+                    downloader.desired_folder_path)
         for image in args.image:
-            print('Downloading single image:', str(image))
+            LOGGER.info('Downloading single image: ' + str(image))
             downloader.download_image(image)
 
     if args.album is not None:
-        print('Downloading album(s) to:', downloader.desired_folder_path)
+        LOGGER.info('Downloading album(s) to: ' +
+                    downloader.desired_folder_path)
         for album in args.album:
             ID = downloader.parse_for_gallery_id(album)
             downloader.download_album(ID)
@@ -55,10 +57,11 @@ def main():
         if not downloader.is_authenticated:
             downloader.authenticate()
 
-        print('Downloading Favorites to:', downloader.desired_folder_path)
+        LOGGER.info('Downloading Favorites to: ' +
+                    downloader.desired_folder_path)
         downloader.download_all_favorites(args.download_all_favorites)
 
-    print('Done.')
+    LOGGER.info('Done.')
 
 
 if __name__ == '__main__':
