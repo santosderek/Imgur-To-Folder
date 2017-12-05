@@ -7,14 +7,22 @@ import shutil
 import re
 
 import logging
+from time import sleep
+
+# Constants:
+
+# Number of bytes in a megabyte
+MBFACTOR = float(1 << 20)
 
 
-""" Setting up logging """
-LOG_FORMAT = "[%(levelname)s] %(asctime)s - %(message)s"
-logging.basicConfig(level=logging.DEBUG, format=LOG_FORMAT)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
-LOGGER = logging.getLogger()
+""" Setting up logging """
+logging.basicConfig(level=logging.DEBUG,
+                    format="[%(levelname)s] %(asctime)s: %(message)s",
+                    datefmt='%I:%M:%S %p')
+
+LOGGER = logging.getLogger('imgurtofolder')
 
 
 class Imgur_Downloader:
@@ -106,16 +114,13 @@ class Imgur_Downloader:
         location = self.check_folder_path(location)
         location += 'config.py'
 
-        LOGGER.debug(location)
+        # LOGGER.debug(location)
 
         # Communicating to user
-        pin_url = self.client.get_auth_url('pin')
 
-        LOGGER.debug('')
         LOGGER.debug(
             'Please go to specified URL: (Imgur-To-Folder does NOT collect any username or password data)')
-        LOGGER.debug(str(pin_url))
-        LOGGER.debug('')
+        LOGGER.debug(str(self.client.get_auth_url('pin')))
 
         pin = str(input('Plase type or paste the pin given here:'))
 
@@ -125,7 +130,6 @@ class Imgur_Downloader:
                                   credentials['refresh_token'])
 
         # Read config.py
-        data = None
         with open(location, 'r') as config_file:
             data = config_file.readlines()
 
@@ -150,7 +154,7 @@ class Imgur_Downloader:
 
     def detect_automatically(self, url=None):
 
-        if url == '' or url is None:
+        if not url:
             return
 
         response = self.parse_for_gallery_id(url)
@@ -163,39 +167,77 @@ class Imgur_Downloader:
             value = value.replace('imgur.com/', '')
 
             image_class = self.client.get_image(value)
+            LOGGER.info('Downloading image: ' + str(url))
             self.download_image(image_class.link)
 
         else:
             LOGGER.info('Downloading image: ' + str(url))
             self.download_image(url)
-            LOGGER.info('Finished image: ' + str(url))
+            # LOGGER.info('Finished image: ' + str(url))
 
-    def download_all_favorites(self, username, start=0, end=-1):
+    def paginate_favorites(self, favorites):
+        """ Creates a new list of nested lists containing no more than 10 items """
+        length = len(favorites)
+
+        new_list = []
+
+        for current_number in range(0, length, 10):
+            if length - current_number <= 10:
+                new_list.append(favorites[current_number:])
+            else:
+                new_list.append(favorites[current_number:current_number + 10])
+
+        return new_list
+
+    def list_favorites_pages(self, username):
 
         favorites = self.client.get_account_favorites(username)
 
         LOGGER.info('Found %d favorites' % len(favorites))
 
-        if end != -1 and start >= 0:
-            favorites = favorites[start:end]
+        for position, page in enumerate(self.paginate_favorites(favorites)):
+            LOGGER.info('--------- [PAGE %d] ---------', position)
+
+            for selection in page:
+                LOGGER.info('\t%s', selection.link)
+
+    def download_favorites(self, username, starting_page=0, ending_page=-1):
+        """ Download all favorites within username. Each 'Page' will be 10 favorites """
+
+        # Get list of favorites from specified user
+        not_paginated_favorites = self.client.get_account_favorites(username)
+        paginated_favorites = self.paginate_favorites(not_paginated_favorites)
+
+        # Display the length of favorites
+        LOGGER.info('Found %d favorites' % len(not_paginated_favorites))
+        sleep(1)
+
+        # Trim the ammount of favorites specified from the user
+        if ending_page != -1 and starting_page >= 0:
+            favorites = paginated_favorites[starting_page:ending_page]
         else:
-            favorites = favorites[start:]
+            favorites = paginated_favorites[starting_page:]
 
-        for selection in favorites:
+        # Loop through all favorites, parse id, and download the file.
+        for position, page in enumerate(favorites, 1):
+            LOGGER.info('--------- [PAGE %d] ---------',
+                        starting_page + position)
 
-            ID = self.parse_for_gallery_id(selection.link)
-            # If an album
-            if ID is not None:
-                self.download_album(ID)
-            # If an image
-            else:
-                LOGGER.info('Downloading single image: ' + str(selection.link))
-                self.download_image(selection.link)
-                LOGGER.info('Finished single image: ' + str(selection.link))
+            for selection in page:
+                ID = self.parse_for_gallery_id(selection.link)
+                # If an album
+                if ID is not None:
+                    self.download_album(ID)
+                # If an image
+                else:
+                    LOGGER.info('Downloading single image: ' +
+                                str(selection.link))
+                    self.download_image(selection.link)
+                    # LOGGER.info('Finished single image: ' + str(selection.link))
 
     def download_album(self, ID):
 
-        if ID is None:
+        if not ID:
             LOGGER.debug('ERROR: No album link given')
             return
 
@@ -207,7 +249,7 @@ class Imgur_Downloader:
 
         # If album_title is None after trying it's album object,
         # Then maybe it's a gallery.
-        if album_title is None:
+        if not album_title:
             try:
                 album_title = self.client.gallery_item(ID).title
             except ip.helpers.error.ImgurClientError:
@@ -215,7 +257,7 @@ class Imgur_Downloader:
 
         # If album_title is None at this point,
         # Then use it's section as it's album name
-        if album_title is None:
+        if not album_title:
             # Try to get album section, to use later
             try:
                 section = self.client.get_album(ID).section
@@ -250,7 +292,7 @@ class Imgur_Downloader:
             except ip.helpers.error.ImgurClientError as e:
                 LOGGER.debug(
                     'ERROR: Could not finish album download' + str(image['link']) + str(e))
-        LOGGER.info('Finished album: ' + album_title)
+        # LOGGER.info('Finished album: ' + album_title)
 
     def download_image(self, url='', directory_name=None, album_position=0):
 
@@ -291,8 +333,7 @@ class Imgur_Downloader:
                 # This is done since I had problems using relative paths during testing.
                 # Needed to make sure it was given a absolute path.
                 if self.desired_folder_path == '.' or self.desired_folder_path == './':
-                    absolute_path = os.getcwd()
-                    absolute_path = self.check_folder_path(absolute_path)
+                    absolute_path = self.check_folder_path(os.getcwd())
                     directory_name = absolute_path + directory_name
                 else:
                     directory_name = self.desired_folder_path + directory_name
@@ -310,12 +351,20 @@ class Imgur_Downloader:
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
 
+            elif os.path.exists(directory_name + link_name):
+                LOGGER.info('\tSkipping: ' + directory_name + link_name)
+                return
+
             # Download image to path + file name
+            file_size = req.headers.get('content-length', 0)
+            LOGGER.info('\t%s, File Size: %.2f MB',
+                        link_name,
+                        int(file_size) / MBFACTOR)
             with open(directory_name + link_name, 'wb') as image_file:
                 req.raw.decode_content = True
                 shutil.copyfileobj(req.raw, image_file)
         else:
-            LOGGER.debug('ERROR: Could not find url!' + str(url))
+            LOGGER.debug('ERROR: Could not find url! ' + str(url))
 
     def change_folder(self, folder_path):
         self.desired_folder_path = self.check_folder_path(folder_path)

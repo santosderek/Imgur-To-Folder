@@ -70,9 +70,13 @@ Base command:
 
     imgurToFolder --image  IMAGE_URL_HERE | OR | imgurToFolder --i  IMAGE_URL_HERE
 
-***Download all favorited Imgur links within your profile***
+***List First 60 favorited Imgur links within your profile***
 
-    imgurToFolder --download-all-favorites [username] | OR | imgurToFolder -df [username]
+    imgurToFolder --list-all-favorites [username] | OR | imgurToFolder -lf [username]
+
+***Download latest 60 favorited Imgur links within your profile***
+
+    imgurToFolder --download-latest-favorites [username] | OR | imgurToFolder -df [username]
 
 #### Warning
 
