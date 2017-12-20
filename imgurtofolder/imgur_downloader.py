@@ -5,19 +5,26 @@ import requests
 import os
 import shutil
 import re
-
+import json
 import logging
 from time import sleep
+# Imgur-To-Folder modules
 
-# Constants:
+""" Constants """
 
 # Number of bytes in a megabyte
 MBFACTOR = float(1 << 20)
 
+AUTHORIZATION_URL = 'https://api.imgur.com/oauth2/authorize?client_id={CLIENT_ID}&response_type={RESPONSE_TYPE}&state=authorizing'
+TOKEN_URL = 'https://api.imgur.com/oauth2/token'
+ACCOUNT_FAVORITES_URL = 'https://api.imgur.com/3/account/{username}/favorites/{page_number}'
 
-logging.getLogger("requests").setLevel(logging.WARNING)
+# Get config.json file
+CONFIG_LOCATION = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+
 
 """ Setting up logging """
+logging.getLogger("requests").setLevel(logging.WARNING)
 logging.basicConfig(level=logging.DEBUG,
                     format="[%(levelname)s] %(asctime)s: %(message)s",
                     datefmt='%I:%M:%S %p')
@@ -104,53 +111,66 @@ class Imgur_Downloader:
             path += '/'
         return path
 
+    def parsing_redirected_link(self, redirected_link):
+        refresh_token = None
+        access_token = None
+
+        # Searching for refresh_token
+        search = re.search('refresh_token=\w+', redirected_link)
+
+        if search is not None:
+            refresh_token = search.group(0)[14:]
+
+        elif search is None:
+            LOGGER.debug('Could not find refresh_token from given url.')
+            exit(1)
+
+        # Searching for access_token
+        search = re.search('access_token=\w+', redirected_link)
+
+        if search is not None:
+            access_token = search.group(0)[13:]
+
+        elif search is None:
+            LOGGER.debug('Could not find refresh_token from given url.')
+            exit(1)
+
+        return refresh_token, access_token
+
     def authenticate(self):
 
         if self.refresh_token is not None:
             return
 
-        # Get config.py file
-        location = os.path.dirname(os.path.abspath(__file__))
-        location = self.check_folder_path(location)
-        location += 'config.py'
-
-        # LOGGER.debug(location)
+        # Load config.json as json object
+        configuration = json.load(open(CONFIG_LOCATION, 'r'))
 
         # Communicating to user
+        auth_url = AUTHORIZATION_URL.format(CLIENT_ID=configuration['client_id'],
+                                            RESPONSE_TYPE='token')
 
         LOGGER.debug(
-            'Please go to specified URL: (Imgur-To-Folder does NOT collect any username or password data)')
-        LOGGER.debug(str(self.client.get_auth_url('pin')))
+            '(Imgur-To-Folder does NOT collect any username or password data)')
+        LOGGER.debug('To authenticate, please go to specified URL and log-in:')
+        LOGGER.debug(auth_url)
+        LOGGER.debug(
+            "After logging in you will be redirected to Imgur's front page.")
 
-        pin = str(input('Plase type or paste the pin given here:'))
+        redirected_link = str(input("\nPaste the redirected url given, here:"))
 
         # Authenicate
-        credentials = self.client.authorize(pin, 'pin')
-        self.client.set_user_auth(credentials['access_token'],
-                                  credentials['refresh_token'])
+        refresh_token, access_token = self.parsing_redirected_link(
+            redirected_link)
 
         # Read config.py
-        with open(location, 'r') as config_file:
-            data = config_file.readlines()
-
-        # Look for Refresh_Token line
-        count = 0
-        found_line_number = None
-        for line in data:
-
-            if line.find('refresh_token') != -1:
-                found_line_number = count
-
-            count += 1
-
-        # Replace the line
-        if found_line_number is not None:
-            line = '\t\'refresh_token\': \'%s\',\n' % credentials['refresh_token']
-            data[found_line_number] = line
+        configuration['refresh_token'] = refresh_token
+        configuration['access_token'] = access_token
 
         # Write it back into the file
-        with open(location, 'w') as config_file:
-            config_file.writelines(data)
+        with open(CONFIG_LOCATION, 'w') as config_file:
+            json.dump(configuration, config_file, sort_keys=True, indent=4,)
+
+        self.refresh_token = refresh_token
 
     def detect_automatically(self, url=None):
 
@@ -173,67 +193,73 @@ class Imgur_Downloader:
         else:
             LOGGER.info('Downloading image: ' + str(url))
             self.download_image(url)
-            # LOGGER.info('Finished image: ' + str(url))
 
-    def paginate_favorites(self, favorites):
-        """ Creates a new list of nested lists containing no more than 10 items """
-        length = len(favorites)
+    def return_all_favorites(self, username):
+        # Get configuration
+        configuration = json.load(open(CONFIG_LOCATION))
 
-        new_list = []
+        # Apply configuration to header and url
+        headers = {'authorization': 'Bearer {token}'.format(
+            token=configuration['access_token'])}
 
-        for current_number in range(0, length, 10):
-            if length - current_number <= 10:
-                new_list.append(favorites[current_number:])
-            else:
-                new_list.append(favorites[current_number:current_number + 10])
+        number_of_favorites = 1
+        page_number = 0
+        list_of_all_links = []
+        while number_of_favorites > 0:
+            url = ACCOUNT_FAVORITES_URL.format(username=username,
+                                               page_number=page_number)
+            req = requests.get(url, headers=headers)
 
-        return new_list
+            data = json.loads(req.content)['data']
+
+            if 'error' in data:
+                break
+            elif data is None:
+                continue
+
+            number_of_favorites = len(data)
+
+            for item in data:
+
+                list_of_all_links.append(item['link'])
+
+            page_number += 1
+
+        return list_of_all_links
 
     def list_favorites_pages(self, username):
 
-        favorites = self.client.get_account_favorites(username)
+        # Get list of favorites from specified user
+        favorites = self.return_all_favorites(username)
 
         LOGGER.info('Found %d favorites' % len(favorites))
 
-        for position, page in enumerate(self.paginate_favorites(favorites)):
-            LOGGER.info('--------- [PAGE %d] ---------', position)
-
-            for selection in page:
-                LOGGER.info('\t%s', selection.link)
+        for link_count, link in enumerate(favorites):
+            if link_count % 60 == 0:
+                LOGGER.info('--------- [PAGE %d] ---------',
+                            (link_count / 60) + 1)
+            LOGGER.info(link)
 
     def download_favorites(self, username, starting_page=0, ending_page=-1):
-        """ Download all favorites within username. Each 'Page' will be 10 favorites """
+        """ Download all favorites within username. Each 'Page' will be 60 favorites """
 
         # Get list of favorites from specified user
-        not_paginated_favorites = self.client.get_account_favorites(username)
-        paginated_favorites = self.paginate_favorites(not_paginated_favorites)
+        favorites = self.return_all_favorites(username)
 
         # Display the length of favorites
-        LOGGER.info('Found %d favorites' % len(not_paginated_favorites))
+        LOGGER.info('Found %d favorites' % len(favorites))
+
+        # Wait one second
         sleep(1)
 
-        # Trim the ammount of favorites specified from the user
-        if ending_page != -1 and starting_page >= 0:
-            favorites = paginated_favorites[starting_page:ending_page]
-        else:
-            favorites = paginated_favorites[starting_page:]
-
-        # Loop through all favorites, parse id, and download the file.
-        for position, page in enumerate(favorites, 1):
-            LOGGER.info('--------- [PAGE %d] ---------',
-                        starting_page + position)
-
-            for selection in page:
-                ID = self.parse_for_gallery_id(selection.link)
-                # If an album
-                if ID is not None:
-                    self.download_album(ID)
-                # If an image
-                else:
-                    LOGGER.info('Downloading single image: ' +
-                                str(selection.link))
-                    self.download_image(selection.link)
-                    # LOGGER.info('Finished single image: ' + str(selection.link))
+        # For each link in favorites, download them.
+        # link_count is the position of the current link in the list.
+        for link_count, link in enumerate(favorites):
+            # if current position is divisable by 60, then increase the page number
+            if link_count % 60 == 0:
+                LOGGER.info('--------- [PAGE %d] ---------',
+                            (link_count / 60) + 1)
+            self.detect_automatically(link)
 
     def download_album(self, ID):
 

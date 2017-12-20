@@ -2,8 +2,17 @@
 import argparse
 
 # Dev defined modules
-from config import configuration
+import json
 from imgur_downloader import *
+
+
+""" Constants """
+
+# Get config.json file path
+CONFIG_LOCATION = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+
+
+configuration = json.load(open(CONFIG_LOCATION, 'r'))
 
 
 def parse_arguments():
