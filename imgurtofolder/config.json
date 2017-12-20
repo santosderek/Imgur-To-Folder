@@ -4,5 +4,5 @@
     "client_secret": "",
     "download_folder_path": ".",
     "refresh_token": "",
-    "single_images_folder": "False"
+    "single_images_folder": false
 }
