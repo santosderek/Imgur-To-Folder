@@ -210,7 +210,7 @@ class Imgur_Downloader:
                                                page_number=page_number)
             req = requests.get(url, headers=headers)
 
-            data = json.loads(req.content)['data']
+            data = json.loads(req.text)['data']
 
             if 'error' in data:
                 break
