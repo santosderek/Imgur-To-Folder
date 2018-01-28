@@ -56,7 +56,7 @@ def main():
                                   max_favorites=args.max_favorites)
 
     if args.folder is not None:
-        downloader.change_folder(args.folder)
+        downloader.change_desired_folder_path(args.folder)
 
     if args.urls is not None:
         for url in args.urls:
