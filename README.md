@@ -70,17 +70,43 @@ Base command:
 
     imgurToFolder --image  IMAGE_URL_HERE | OR | imgurToFolder --i  IMAGE_URL_HERE
 
-***List First 60 favorited Imgur links within your profile***
+***List all favorited Imgur links within your profile***
 
 *Please see below for authenticating setup.*
 
     imgurToFolder --list-all-favorites [username] | OR | imgurToFolder -lf [username]
 
-***Download latest 60 favorited Imgur links within your profile***
+***Download favorited Imgur links within your profile***
 
 *Please see below for authenticating setup.*
 
+*Download latest favorites.*
+
     imgurToFolder --download-latest-favorites [username] | OR | imgurToFolder -df [username]
+
+*Download oldest favorites.*
+
+    imgurToFolder --download-oldest-favorites [username] | OR | imgurToFolder -df [username]
+
+*To limit number of favorites to download use `--max-favorites`:*
+
+    imgurToFolder --download-latest-favorites [username] --max_favorites [maximum_number_of_favorites]
+
+    [OR]
+
+    imgurToFolder --download-oldest-favorites [username] --max_favorites [maximum_number_of_favorites]
+
+***Over-write existing files (disables skipping)***
+
+*To over-write existing files use `--overwrite`*
+
+    imgurToFolder [URLS] --overwrite
+
+***Enable debugging output***
+
+*To enable debugging output use `--verbose`
+
+    imgurtofolder [URLS] --verbose
 
 ### Authentication Setup For Account Access (Only needed to download favorites)
 
@@ -98,7 +124,7 @@ Paste in the redirected url located in the address bar, back into the terminal /
 
 You should now be able to list and download your Imgur favorites.
 
-This step will no longer be needed for later favorites downloads. 
+This step will no longer be needed for later favorites downloads.
 
 ### Imgur Rate Limiting.
 

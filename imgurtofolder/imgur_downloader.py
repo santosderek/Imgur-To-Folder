@@ -17,19 +17,31 @@ MBFACTOR = float(1 << 20)
 
 AUTHORIZATION_URL = 'https://api.imgur.com/oauth2/authorize?client_id={CLIENT_ID}&response_type={RESPONSE_TYPE}&state=authorizing'
 TOKEN_URL = 'https://api.imgur.com/oauth2/token'
-ACCOUNT_FAVORITES_URL = 'https://api.imgur.com/3/account/{username}/favorites/{page_number}'
+ACCOUNT_FAVORITES_URL = 'https://api.imgur.com/3/account/{username}/favorites/{page_number}/{favoritesSort}'
 
 # Get config.json file
 CONFIG_LOCATION = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
 
 """ Setting up logging """
-logging.getLogger("requests").setLevel(logging.WARNING)
-logging.basicConfig(level=logging.DEBUG,
-                    format="[%(levelname)s] %(asctime)s: %(message)s",
-                    datefmt='%I:%M:%S %p')
-
 LOGGER = logging.getLogger('imgurtofolder')
+LOGGER.setLevel(logging.DEBUG)
+
+
+FORMATTER = logging.Formatter('[%(levelname)s] %(asctime)s: %(message)s',
+                              datefmt='%I:%M:%S %p')
+
+# Stream Handler for logging
+STREAM_HANDLER = logging.StreamHandler()
+STREAM_HANDLER.setLevel(logging.INFO)
+STREAM_HANDLER.setFormatter(FORMATTER)
+
+LOGGER.addHandler(STREAM_HANDLER)
+
+
+def ENABLE_LOGGING_DEBUG():
+    global STREAM_HANDLER
+    STREAM_HANDLER.setLevel(logging.DEBUG)
 
 
 class Imgur_Downloader:
@@ -38,7 +50,14 @@ class Imgur_Downloader:
                  client_secret,
                  folder_path,
                  refresh_token=None,
-                 single_images_folder=True):
+                 single_images_folder=True,
+                 overwrite=False,
+                 verbose=False,
+                 max_favorites=None):
+        if verbose:
+            ENABLE_LOGGING_DEBUG()
+
+        self.max_favorites = max_favorites
 
         # Correcting refesh token
         if not refresh_token:
@@ -55,14 +74,17 @@ class Imgur_Downloader:
                                      refresh_token=refresh_token)
 
         # Setting desired folder path
-        self.desired_folder_path = self.check_folder_path(folder_path)
-        self.check_if_folder_exists()
+        self.change_desired_folder_path(folder_path)
 
         # If refresh_token was given, set true
         if self.refresh_token is not None:
             self.is_authenticated = True
         else:
             self.is_authenticated = False
+
+        self.overwrite = overwrite
+
+        # If verbose is selected, enable debug within logger.
 
     def check_if_folder_exists(self):
         """ Checks if folder exists, and creates one if not """
@@ -96,7 +118,8 @@ class Imgur_Downloader:
     def replace_characters(self, word):
         # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
         invalid_characters = ['\\', "'", '/', ':',
-                              '*', '?', '"', '<', '>', '|', '.']
+                              '*', '?', '"', '<',
+                              '>', '|', '.', '\n']
 
         for character in invalid_characters:
             word = word.replace(character, '')
@@ -149,11 +172,11 @@ class Imgur_Downloader:
         auth_url = AUTHORIZATION_URL.format(CLIENT_ID=configuration['client_id'],
                                             RESPONSE_TYPE='token')
 
-        LOGGER.debug(
+        LOGGER.info(
             '(Imgur-To-Folder does NOT collect any username or password data)')
-        LOGGER.debug('To authenticate, please go to specified URL and log-in:')
-        LOGGER.debug(auth_url)
-        LOGGER.debug(
+        LOGGER.info('To authenticate, please go to specified URL and log-in:')
+        LOGGER.info(auth_url)
+        LOGGER.info(
             "After logging in you will be redirected to Imgur's front page.")
 
         redirected_link = str(input("\nPaste the redirected url given, here:"))
@@ -194,7 +217,13 @@ class Imgur_Downloader:
             LOGGER.info('Downloading image: ' + str(url))
             self.download_image(url)
 
-    def return_all_favorites(self, username):
+    def return_all_favorites(self, username, oldest=False):
+        # Determine how favorites are sorted
+        if oldest == True:
+            favsort = 'oldest'
+        else:
+            favsort = 'newest'
+
         # Get configuration
         configuration = json.load(open(CONFIG_LOCATION))
 
@@ -207,7 +236,8 @@ class Imgur_Downloader:
         list_of_all_links = []
         while number_of_favorites > 0:
             url = ACCOUNT_FAVORITES_URL.format(username=username,
-                                               page_number=page_number)
+                                               page_number=page_number,
+                                               favoritesSort=favsort)
             req = requests.get(url, headers=headers)
 
             data = json.loads(req.text)['data']
@@ -240,11 +270,11 @@ class Imgur_Downloader:
                             (link_count / 60) + 1)
             LOGGER.info(link)
 
-    def download_favorites(self, username, starting_page=0, ending_page=-1):
+    def download_favorites(self, username, oldest=False):
         """ Download all favorites within username. Each 'Page' will be 60 favorites """
 
         # Get list of favorites from specified user
-        favorites = self.return_all_favorites(username)
+        favorites = self.return_all_favorites(username, oldest)
 
         # Display the length of favorites
         LOGGER.info('Found %d favorites' % len(favorites))
@@ -260,6 +290,9 @@ class Imgur_Downloader:
                 LOGGER.info('--------- [PAGE %d] ---------',
                             (link_count / 60) + 1)
             self.detect_automatically(link)
+
+            if self.max_favorites == link_count + 1:
+                return
 
     def download_album(self, ID):
 
@@ -330,10 +363,14 @@ class Imgur_Downloader:
             url = url[:-4] + 'gif'
 
         req = requests.get(url, stream=True)
+        LOGGER.debug("Request: %s %s %s",
+                     req.request.method,
+                     req.request.url,
+                     req.request.body)
 
         if req.status_code == 200:
 
-            # Link names
+            """ Link names """
             if album_position == 0:
                 link_name = url[url.rfind('/') + 1:]
 
@@ -347,6 +384,7 @@ class Imgur_Downloader:
                 file_extension = url[url.rfind('.'):]
                 link_name += file_extension
 
+            """ Directory Name """
             # If directory_name is given, make it the new folder name
             if directory_name is not None:
 
@@ -354,16 +392,7 @@ class Imgur_Downloader:
                     directory_name = directory_name[:MAX_NAME_LENGTH]
 
                 directory_name = self.replace_characters(directory_name)
-
-                # If directory not given then get the absolute path.
-                # This is done since I had problems using relative paths during testing.
-                # Needed to make sure it was given a absolute path.
-                if self.desired_folder_path == '.' or self.desired_folder_path == './':
-                    absolute_path = self.check_folder_path(os.getcwd())
-                    directory_name = absolute_path + directory_name
-                else:
-                    directory_name = self.desired_folder_path + directory_name
-
+                directory_name = self.desired_folder_path + directory_name
                 directory_name = self.check_folder_path(directory_name)
 
             # Else make the desired_folder_path the folder to download in
@@ -377,7 +406,8 @@ class Imgur_Downloader:
             if not os.path.exists(directory_name):
                 os.makedirs(directory_name)
 
-            elif os.path.exists(directory_name + link_name):
+            # If directory exists and user does not want to overwrite, skip
+            elif os.path.exists(directory_name + link_name) and not self.overwrite:
                 LOGGER.info('\tSkipping: ' + directory_name + link_name)
                 return
 
@@ -392,5 +422,16 @@ class Imgur_Downloader:
         else:
             LOGGER.debug('ERROR: Could not find url! ' + str(url))
 
-    def change_folder(self, folder_path):
+    def change_desired_folder_path(self, folder_path):
         self.desired_folder_path = self.check_folder_path(folder_path)
+
+        """
+        If directory not given then get the absolute path.
+        This is done since I had problems using relative paths during testing.
+        Needed to make sure it was given a absolute path.
+        """
+        if self.desired_folder_path == '.' or self.desired_folder_path == './':
+            absolute_path = self.check_folder_path(os.getcwd())
+            self.desired_folder_path = absolute_path
+
+        self.check_if_folder_exists()

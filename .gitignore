@@ -3,7 +3,4 @@ dist
 ImgurToFolder.egg-info
 ImgurToFolder/__pycache__/config.cpython-36.pyc
 __pycache__
-imgurtofolder/config.py
-imgurtofolder\config.py
-imgurtofolder/config.py
-imgurtofolder/config.py
+config.json

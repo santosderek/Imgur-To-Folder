@@ -16,6 +16,7 @@ configuration = json.load(open(CONFIG_LOCATION, 'r'))
 
 
 def parse_arguments():
+    """ Parse command line arguments """
     parser = argparse.ArgumentParser(
         description='Download images off Imgur to a folder of your choice!')
     parser.add_argument('urls', metavar='URLS', type=str,
@@ -28,9 +29,16 @@ def parse_arguments():
                         type=str, nargs='+', help='Download desired image to folder')
     parser.add_argument('--download-latest-favorites', '-df', metavar='USERNAME',
                         type=str, nargs='?', help='Download latest favorited images to folder')
-
+    parser.add_argument('--download-oldest-favorites', '-do', metavar='USERNAME',
+                        type=str, nargs='?', help='Download oldest favorited images to folder')
+    parser.add_argument('--max-favorites', metavar='NUMBER_OF_MAX',
+                        type=int, nargs='?', help='Specify the max number of favorites to download')
     parser.add_argument('--list-all-favorites', '-lf', metavar='USERNAME',
                         type=str, nargs='?', help='List all favorites of a specified user')
+    parser.add_argument('--overwrite', action='store_true',
+                        help='Write over existing content. (Disables skipping.)')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Enables debugging output.')
 
     return parser.parse_args()
 
@@ -42,7 +50,10 @@ def main():
                                   client_secret=configuration['client_secret'],
                                   folder_path=configuration['download_folder_path'],
                                   refresh_token=configuration['refresh_token'],
-                                  single_images_folder=configuration['single_images_folder'])
+                                  single_images_folder=configuration['single_images_folder'],
+                                  overwrite=args.overwrite,
+                                  verbose=args.verbose,
+                                  max_favorites=args.max_favorites)
 
     if args.folder is not None:
         downloader.change_folder(args.folder)
@@ -65,13 +76,20 @@ def main():
             ID = downloader.parse_for_gallery_id(album)
             downloader.download_album(ID)
 
-    if args.download_latest_favorites is not None:
+    if args.download_latest_favorites is not None or args.download_oldest_favorites is not None:
         if not downloader.is_authenticated:
             downloader.authenticate()
 
         LOGGER.info('Downloading Favorites to: ' +
                     downloader.desired_folder_path)
-        downloader.download_favorites(args.download_latest_favorites)
+
+        if args.download_latest_favorites is not None:
+            downloader.download_favorites(args.download_latest_favorites,
+                                          oldest=False)
+
+        elif args.download_oldest_favorites is not None:
+            downloader.download_favorites(args.download_oldest_favorites,
+                                          oldest=True)
 
     if args.list_all_favorites is not None:
         if not downloader.is_authenticated:
