@@ -80,11 +80,11 @@ Base command:
 
 *Please see below for authenticating setup.*
 
-*Download latest favorites.*
+*Download all favorites in order of latest.*
 
     imgurToFolder --download-latest-favorites [username] | OR | imgurToFolder -df [username]
 
-*Download oldest favorites.*
+*Download all favorites in order of oldest.*
 
     imgurToFolder --download-oldest-favorites [username] | OR | imgurToFolder -df [username]
 
@@ -95,6 +95,10 @@ Base command:
     [OR]
 
     imgurToFolder --download-oldest-favorites [username] --max_favorites [maximum_number_of_favorites]
+
+*Example for latest 60 favorites*
+
+    imgurToFolder --download-latest-favorites [username] --max_favorites 60
 
 ***Over-write existing files (disables skipping)***
 

@@ -276,6 +276,9 @@ class Imgur_Downloader:
         # Get list of favorites from specified user
         favorites = self.return_all_favorites(username, oldest)
 
+        if self.max_favorites != None:
+            favorites = favorites[:self.max_favorites]
+
         # Display the length of favorites
         LOGGER.info('Found %d favorites' % len(favorites))
 
@@ -362,6 +365,50 @@ class Imgur_Downloader:
         if url[-4:] == 'gifv':
             url = url[:-4] + 'gif'
 
+        # Create File Name
+
+        """ Link names """
+        if album_position == 0:
+            link_name = url[url.rfind('/') + 1:]
+
+        else:
+            # First erase invalid characters
+            link_name = directory_name[:MAX_NAME_LENGTH] + \
+                ' - ' + str(album_position)
+            link_name = self.replace_characters(link_name)
+
+            # Then add file_extension
+            file_extension = url[url.rfind('.'):]
+            link_name += file_extension
+
+        """ Directory Name """
+        # If directory_name is given, make it the new folder name
+        if directory_name is not None:
+
+            if len(directory_name) > MAX_NAME_LENGTH:
+                directory_name = directory_name[:MAX_NAME_LENGTH]
+
+            directory_name = self.replace_characters(directory_name)
+            directory_name = self.desired_folder_path + directory_name
+            directory_name = self.check_folder_path(directory_name)
+
+        # Else make the desired_folder_path the folder to download in
+        elif self.single_images_folder:
+            directory_name = self.desired_folder_path + 'Single-Images/'
+
+        else:
+            directory_name = self.desired_folder_path
+
+        # Make directory if not existed
+        if not os.path.exists(directory_name):
+            os.makedirs(directory_name)
+
+        # If directory exists and user does not want to overwrite, skip
+        elif os.path.exists(directory_name + link_name) and not self.overwrite:
+            LOGGER.info('\tSkipping: ' + directory_name + link_name)
+            return
+
+        # Make GET request
         req = requests.get(url, stream=True)
         LOGGER.debug("Request: %s %s %s",
                      req.request.method,
@@ -369,47 +416,6 @@ class Imgur_Downloader:
                      req.request.body)
 
         if req.status_code == 200:
-
-            """ Link names """
-            if album_position == 0:
-                link_name = url[url.rfind('/') + 1:]
-
-            else:
-                # First erase invalid characters
-                link_name = directory_name[:MAX_NAME_LENGTH] + \
-                    ' - ' + str(album_position)
-                link_name = self.replace_characters(link_name)
-
-                # Then add file_extension
-                file_extension = url[url.rfind('.'):]
-                link_name += file_extension
-
-            """ Directory Name """
-            # If directory_name is given, make it the new folder name
-            if directory_name is not None:
-
-                if len(directory_name) > MAX_NAME_LENGTH:
-                    directory_name = directory_name[:MAX_NAME_LENGTH]
-
-                directory_name = self.replace_characters(directory_name)
-                directory_name = self.desired_folder_path + directory_name
-                directory_name = self.check_folder_path(directory_name)
-
-            # Else make the desired_folder_path the folder to download in
-            elif self.single_images_folder:
-                directory_name = self.desired_folder_path + 'Single-Images/'
-
-            else:
-                directory_name = self.desired_folder_path
-
-            # Make directory if not existed
-            if not os.path.exists(directory_name):
-                os.makedirs(directory_name)
-
-            # If directory exists and user does not want to overwrite, skip
-            elif os.path.exists(directory_name + link_name) and not self.overwrite:
-                LOGGER.info('\tSkipping: ' + directory_name + link_name)
-                return
 
             # Download image to path + file name
             file_size = req.headers.get('content-length', 0)

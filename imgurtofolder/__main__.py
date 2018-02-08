@@ -22,7 +22,7 @@ def parse_arguments():
     parser.add_argument('urls', metavar='URLS', type=str,
                         nargs='*', help='Automatically detect urls')
     parser.add_argument('--folder', '-f', metavar='FOLDER_PATH',
-                        type=str, nargs='?', help='Change desired folder path')
+                        type=str, help='Change desired folder path')
     parser.add_argument('--album', '-a', metavar='ALBUM_URL',
                         type=str, nargs='+', help='Download desired album to folder')
     parser.add_argument('--image', '-i', metavar='IMAGE_URL',
@@ -32,7 +32,7 @@ def parse_arguments():
     parser.add_argument('--download-oldest-favorites', '-do', metavar='USERNAME',
                         type=str, nargs='?', help='Download oldest favorited images to folder')
     parser.add_argument('--max-favorites', metavar='NUMBER_OF_MAX',
-                        type=int, nargs='?', help='Specify the max number of favorites to download')
+                        type=int,  help='Specify the max number of favorites to download')
     parser.add_argument('--list-all-favorites', '-lf', metavar='USERNAME',
                         type=str, nargs='?', help='List all favorites of a specified user')
     parser.add_argument('--overwrite', action='store_true',
