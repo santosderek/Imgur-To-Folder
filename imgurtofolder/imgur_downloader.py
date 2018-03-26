@@ -15,10 +15,11 @@ from time import sleep
 # Number of bytes in a megabyte
 MBFACTOR = float(1 << 20)
 
+# Imgur API URLS
 AUTHORIZATION_URL = 'https://api.imgur.com/oauth2/authorize?client_id={CLIENT_ID}&response_type={RESPONSE_TYPE}&state=authorizing'
 TOKEN_URL = 'https://api.imgur.com/oauth2/token'
 ACCOUNT_FAVORITES_URL = 'https://api.imgur.com/3/account/{username}/favorites/{page_number}/{favoritesSort}'
-
+ACCOUT_IMAGES_URL = 'https://api.imgur.com/3/account/me/images/{page_number}'
 # Get config.json file
 CONFIG_LOCATION = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
 
@@ -216,6 +217,54 @@ class Imgur_Downloader:
         else:
             LOGGER.info('Downloading image: ' + str(url))
             self.download_image(url)
+
+    def return_account_images_by_number(self, page_number):
+        configuration = json.load(open(CONFIG_LOCATION, 'r'))
+
+        headers = {'Authorization': 'Bearer {accessToken}'.format(
+            accessToken=configuration['access_token'])}
+
+        response = requests.request("GET",
+                                    ACCOUT_IMAGES_URL.format(
+                                        page_number=page_number),
+                                    headers=headers)
+        return json.loads(response.text)['data']
+
+    def get_account_images(self, page_number=0):
+
+        list_of_data = []
+
+        """First Page"""
+        item_list = self.return_account_images_by_number(page_number)
+
+        for item in item_list:
+            list_of_data.append(item)
+
+        """Any more pages"""
+        while (len(item_list) >= 50):
+            page_number += 1
+
+            item_list = self.return_account_images_by_number(page_number)
+
+            for item in item_list:
+                list_of_data.append(item)
+
+        page_number += 1
+
+        item_list = self.return_account_images_by_number(page_number)
+
+        for item in item_list:
+            list_of_data.append(item)
+
+        return list_of_data
+
+    def download_account_images(self):
+        account_images = self.get_account_images()
+
+        LOGGER.info('Downloading {} images'.format(len(account_images)))
+
+        for item in account_images:
+            self.detect_automatically(item['link'])
 
     def return_all_favorites(self, username, oldest=False):
         # Determine how favorites are sorted

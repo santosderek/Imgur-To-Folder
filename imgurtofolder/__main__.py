@@ -27,6 +27,8 @@ def parse_arguments():
                         type=str, nargs='+', help='Download desired album to folder')
     parser.add_argument('--image', '-i', metavar='IMAGE_URL',
                         type=str, nargs='+', help='Download desired image to folder')
+    parser.add_argument('--download-account-images', '-dai', action='store_true',
+                        help='Download latest favorited images to folder')
     parser.add_argument('--download-latest-favorites', '-df', metavar='USERNAME',
                         type=str, nargs='?', help='Download latest favorited images to folder')
     parser.add_argument('--download-oldest-favorites', '-do', metavar='USERNAME',
@@ -97,8 +99,21 @@ def main():
 
         downloader.list_favorites_pages(args.list_all_favorites)
 
+    if args.download_account_images is True:
+        if not downloader.is_authenticated:
+            downloader.authenticate()
+
+        downloader.download_account_images()
+
     LOGGER.info('Done.')
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
+        print(e)
+        # LOGGER.info('User Passed Keyboard Interput.')

@@ -70,6 +70,12 @@ Base command:
 
     imgurToFolder --image  IMAGE_URL_HERE | OR | imgurToFolder --i  IMAGE_URL_HERE
 
+***Download all account images within your profile***
+
+*Please see below for authenticating setup.*
+
+    imgurToFolder --download-account-images | OR | imgurToFolder -dai
+
 ***List all favorited Imgur links within your profile***
 
 *Please see below for authenticating setup.*
