@@ -1,5 +1,5 @@
+# Derek Santos
 # 3rd party modules
-import imgurpython as ip
 import requests
 # Python modules
 import os
@@ -11,17 +11,48 @@ from time import sleep
 # Imgur-To-Folder modules
 
 """ Constants """
+BASE_URL_REGEX = r'(https?)?(://)?(www.)?(imgur.com)'
 
-# Number of bytes in a megabyte
-MBFACTOR = float(1 << 20)
+# Must be in format r'(/wordshere/)'
+IMGUR_BASE_EXTENSIONS = {
+'album' : [r'(/a/)'],
+'gallery' : [r'(/g/)', r'(/gallery/)'],
+'subreddit' : [r'(/r/)'],
+'tag' : [r'(/t/)(\w+/)'],
+'image' : [r'(/)(\w+)']
+}
+
+# Imgur's RESTful API Urls
+IMGUR_API_URLS = {
+'album' : { 'base'   : 'https://api.imgur.com/3/album/{albumHash}',
+            'images' : 'https://api.imgur.com/3/album/{albumHash}/images',
+            'image'  : 'https://api.imgur.com/3/album/{albumHash}/image/{imageHash}'},
+
+'gallery' : {'base' : 'https://api.imgur.com/3/gallery/{section}',
+             'full' : 'https://api.imgur.com/3/gallery/{section}/{sort}/{window}/{page}?showViral={showViral}&mature=true&album_previews={albumPreviews}'},
+
+'subreddit' : {'subreddit' : 'https://api.imgur.com/3/gallery/r/{subreddit}/{sort}/{window}/{page}',
+               'image' : 'https://api.imgur.com/3/gallery/r/{subreddit}/{subredditImageId}'},
+
+'tag' : {'base':'https://api.imgur.com/3/gallery/t/{tagName}',
+         'full' : 'https://api.imgur.com/3/gallery/t/{tagName}/{sort}/{window}/{page}'},
+
+'image' : {'base': 'https://api.imgur.com/3/image/{imageHash}'}
+
+}
+
+# Create global configuration json variable
+CONFIG_LOCATION = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+
+# Load config json into memory
+with open(CONFIG_LOCATION, 'r') as cfile:
+    CONFIGURATION = json.load(cfile)
 
 # Imgur API URLS
-AUTHORIZATION_URL = 'https://api.imgur.com/oauth2/authorize?client_id={CLIENT_ID}&response_type={RESPONSE_TYPE}&state=authorizing'
-TOKEN_URL = 'https://api.imgur.com/oauth2/token'
+AUTHORIZATION_URL = 'https://api.imgur.com/oauth2/authorize?client_id=%s&response_type=token&state=authorizing'
 ACCOUNT_FAVORITES_URL = 'https://api.imgur.com/3/account/{username}/favorites/{page_number}/{favoritesSort}'
-ACCOUT_IMAGES_URL = 'https://api.imgur.com/3/account/me/images/{page_number}'
-# Get config.json file
-CONFIG_LOCATION = os.path.dirname(os.path.abspath(__file__)) + '/config.json'
+ACCOUNT_IMAGES_URL = 'https://api.imgur.com/3/account/me/images/%d'
+
 
 
 """ Setting up logging """
@@ -39,82 +70,28 @@ STREAM_HANDLER.setFormatter(FORMATTER)
 
 LOGGER.addHandler(STREAM_HANDLER)
 
-
 def ENABLE_LOGGING_DEBUG():
     global STREAM_HANDLER
     STREAM_HANDLER.setLevel(logging.DEBUG)
-
 
 class Imgur_Downloader:
     def __init__(self,
                  client_id,
                  client_secret,
-                 folder_path,
-                 refresh_token=None,
-                 single_images_folder=True,
+                 refresh_token="",
                  overwrite=False,
                  verbose=False,
                  max_favorites=None):
+
         if verbose:
             ENABLE_LOGGING_DEBUG()
 
         self.max_favorites = max_favorites
 
-        # Correcting refesh token
-        if not refresh_token:
-            refresh_token = None
-
         # Storing refresh token
         self.refresh_token = refresh_token
 
-        self.single_images_folder = single_images_folder
-
-        # Creating ImgurClient
-        self.client = ip.ImgurClient(client_id,
-                                     client_secret,
-                                     refresh_token=refresh_token)
-
-        # Setting desired folder path
-        self.change_desired_folder_path(folder_path)
-
-        # If refresh_token was given, set true
-        if self.refresh_token is not None:
-            self.is_authenticated = True
-        else:
-            self.is_authenticated = False
-
         self.overwrite = overwrite
-
-        # If verbose is selected, enable debug within logger.
-
-    def check_if_folder_exists(self):
-        """ Checks if folder exists, and creates one if not """
-        if not os.path.exists(self.desired_folder_path):
-            os.mkdir(self.desired_folder_path)
-
-    def parse_for_gallery_id(self, url):
-
-        # Base url path for gallery and album
-        # If base url path ever changes only need to change these two variables
-
-        if re.search(r'imgur\.com/(a/\w+|gallery/\w+)', url) is None:
-            return None
-
-        album = 'imgur.com/a/'
-        gallery = 'imgur.com/gallery/'
-
-        if url.find(album) != -1:
-            start_position = int(url.find(album) + len(album))
-
-        elif url.find(gallery) != -1:
-            start_position = int(url.find(gallery) + len(gallery))
-
-        if start_position != -1:
-            end_position = int(url.find('/', start_position))
-            if (end_position > -1):
-                return url[start_position:end_position]
-            else:
-                return url[start_position:]
 
     def replace_characters(self, word):
         # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
@@ -127,134 +104,99 @@ class Imgur_Downloader:
 
         return word
 
-    def check_folder_path(self, path):
-        # Checks if the last char of path has a '/' to complete the extension
-        path = path.replace('\\', '/')
-
-        if path[-1:] != '/':
-            path += '/'
-        return path
-
-    def parsing_redirected_link(self, redirected_link):
+    def parse_redirect_link(self, redirected_link):
         refresh_token = None
         access_token = None
 
         # Searching for refresh_token
-        search = re.search('refresh_token=\w+', redirected_link)
+        search = re.search(r'(refresh_token)\=(\w+)&', redirected_link)
 
         if search is not None:
-            refresh_token = search.group(0)[14:]
+            refresh_token = search.group(2)
 
         elif search is None:
-            LOGGER.debug('Could not find refresh_token from given url.')
+            LOGGER.info('Could not find refresh token from given url.')
             exit(1)
 
         # Searching for access_token
-        search = re.search('access_token=\w+', redirected_link)
+        search = re.search('(access_token)\=(\w+)&', redirected_link)
 
         if search is not None:
-            access_token = search.group(0)[13:]
+            access_token = search.group(2)
 
         elif search is None:
-            LOGGER.debug('Could not find refresh_token from given url.')
+            LOGGER.info('Could not find access token from given url.')
             exit(1)
 
         return refresh_token, access_token
 
     def authenticate(self):
 
-        if self.refresh_token is not None:
+        if not self.refresh_token == '':
             return
 
-        # Load config.json as json object
-        configuration = json.load(open(CONFIG_LOCATION, 'r'))
+        global CONFIGURATION
 
-        # Communicating to user
-        auth_url = AUTHORIZATION_URL.format(CLIENT_ID=configuration['client_id'],
-                                            RESPONSE_TYPE='token')
+        # Setting authorization url
+        auth_url = AUTHORIZATION_URL % CONFIGURATION['client_id']
 
-        LOGGER.info(
-            '(Imgur-To-Folder does NOT collect any username or password data)')
-        LOGGER.info('To authenticate, please go to specified URL and log-in:')
+        # Messages
+        login_message = \
+        '(Imgur-To-Folder does NOT collect any username or password data)'
+        '\nTo authenticate, please go to specified URL and log-in:'
+
+        after_login_message = \
+        "After logging in you will be redirected to Imgur's front page."
+
+        # Alert User
+        LOGGER.info(login_message)
         LOGGER.info(auth_url)
-        LOGGER.info(
-            "After logging in you will be redirected to Imgur's front page.")
+        LOGGER.info(after_login_message)
 
+        # Parse redirected url
         redirected_link = str(input("\nPaste the redirected url given, here:"))
+        refresh_token, access_token = self.parse_redirect_link(redirected_link)
 
-        # Authenicate
-        refresh_token, access_token = self.parsing_redirected_link(
-            redirected_link)
+        CONFIGURATION['refresh_token'] = refresh_token
+        CONFIGURATION['access_token'] = access_token
 
-        # Read config.py
-        configuration['refresh_token'] = refresh_token
-        configuration['access_token'] = access_token
+        # Preserve last config
+        # We only need to change refresh_token and access_token
+        with open(CONFIG_LOCATION, 'r') as config_file:
+            previous_config = json.load(config_file)
+            previous_config['refresh_token'] = CONFIGURATION['refresh_token']
+            previous_config['access_token'] = CONFIGURATION['access_token']
 
         # Write it back into the file
         with open(CONFIG_LOCATION, 'w') as config_file:
-            json.dump(configuration, config_file, sort_keys=True, indent=4,)
+            json.dump(previous_config, config_file, sort_keys=True, indent=4,)
 
         self.refresh_token = refresh_token
 
-    def detect_automatically(self, url=None):
-
-        if not url:
-            return
-
-        response = self.parse_for_gallery_id(url)
-
-        if response is not None:
-            self.download_album(response)
-
-        elif re.search(r'imgur\.com/(\w+$)', url) is not None:
-            value = re.search(r'imgur\.com/(\w+$)', url).group(0)
-            value = value.replace('imgur.com/', '')
-
-            image_class = self.client.get_image(value)
-            LOGGER.info('Downloading image: ' + str(url))
-            self.download_image(image_class.link)
-
-        else:
-            LOGGER.info('Downloading image: ' + str(url))
-            self.download_image(url)
-
     def return_account_images_by_number(self, page_number):
-        configuration = json.load(open(CONFIG_LOCATION, 'r'))
+        # Set up bearer token for header
+        bearer = 'Bearer %s' % CONFIGURATION['access_token']
 
-        headers = {'Authorization': 'Bearer {accessToken}'.format(
-            accessToken=configuration['access_token'])}
+        # Send get request
+        response = requests.get(ACCOUNT_IMAGES_URL % int(page_number),
+                                headers={'Authorization' : bearer})
 
-        response = requests.request("GET",
-                                    ACCOUT_IMAGES_URL.format(
-                                        page_number=page_number),
-                                    headers=headers)
+        # Return response
         return json.loads(response.text)['data']
 
     def get_account_images(self, page_number=0):
-
+        current_page = 0
         list_of_data = []
 
-        """First Page"""
-        item_list = self.return_account_images_by_number(page_number)
 
-        for item in item_list:
-            list_of_data.append(item)
-
-        """Any more pages"""
-        while (len(item_list) >= 50):
-            page_number += 1
-
-            item_list = self.return_account_images_by_number(page_number)
+        item_list = self.return_account_images_by_number(current_page)
+        while len(item_list) > 0:
 
             for item in item_list:
                 list_of_data.append(item)
 
-        page_number += 1
-
-        item_list = self.return_account_images_by_number(page_number)
-
-        for item in item_list:
-            list_of_data.append(item)
+            current_page += 1
+            item_list = self.return_account_images_by_number(current_page)
 
         return list_of_data
 
@@ -264,25 +206,31 @@ class Imgur_Downloader:
         LOGGER.info('Downloading {} images'.format(len(account_images)))
 
         for item in account_images:
-            self.detect_automatically(item['link'])
+            if 'mp4' in item:
+                content = self.parse_url_by_content(item['mp4'])
+                self.download_by_type (*content, item['mp4'])
 
-    def return_all_favorites(self, username, oldest=False):
+            elif 'link' in item:
+                content = self.parse_url_by_content(item['link'])
+                self.download_by_type (*content, item['link'])
+
+    def return_favorites(self, username, oldest=False, starting_page = 0):
         # Determine how favorites are sorted
         if oldest == True:
             favsort = 'oldest'
         else:
             favsort = 'newest'
 
-        # Get configuration
-        configuration = json.load(open(CONFIG_LOCATION))
-
-        # Apply configuration to header and url
-        headers = {'authorization': 'Bearer {token}'.format(
-            token=configuration['access_token'])}
+        # Apply CONFIGURATION to header and url
+        bearer = 'Bearer %s' % CONFIGURATION['access_token']
+        headers = {'Authorization' : bearer}
 
         number_of_favorites = 1
-        page_number = 0
+        page_number = starting_page
         list_of_all_links = []
+
+        LOGGER.info('Retreving Favorites!')
+
         while number_of_favorites > 0:
             url = ACCOUNT_FAVORITES_URL.format(username=username,
                                                page_number=page_number,
@@ -292,6 +240,8 @@ class Imgur_Downloader:
             data = json.loads(req.text)['data']
 
             if 'error' in data:
+                LOGGER.info ('ERROR! When returning favorites:')
+                LOGGER.info (data)
                 break
             elif data is None:
                 continue
@@ -302,14 +252,19 @@ class Imgur_Downloader:
 
                 list_of_all_links.append(item['link'])
 
+            if self.max_favorites and \
+                len(list_of_all_links) >= self.max_favorites:
+
+                break
+
             page_number += 1
 
-        return list_of_all_links
+        return list_of_all_links[:self.max_favorites]
 
     def list_favorites_pages(self, username):
 
         # Get list of favorites from specified user
-        favorites = self.return_all_favorites(username)
+        favorites = self.return_favorites(username)
 
         LOGGER.info('Found %d favorites' % len(favorites))
 
@@ -319,11 +274,14 @@ class Imgur_Downloader:
                             (link_count / 60) + 1)
             LOGGER.info(link)
 
-    def download_favorites(self, username, oldest=False):
-        """ Download all favorites within username. Each 'Page' will be 60 favorites """
+    def download_favorites(self, username, page_start = 0, oldest=False):
+        """
+            Download all favorites within username.
+            Each 'Page' will be 60 favorites
+        """
 
         # Get list of favorites from specified user
-        favorites = self.return_all_favorites(username, oldest)
+        favorites = self.return_favorites(username, oldest, page_start)
 
         if self.max_favorites != None:
             favorites = favorites[:self.max_favorites]
@@ -331,162 +289,202 @@ class Imgur_Downloader:
         # Display the length of favorites
         LOGGER.info('Found %d favorites' % len(favorites))
 
-        # Wait one second
-        sleep(1)
+        # Wait 1/2 second
+        sleep(.5)
 
         # For each link in favorites, download them.
         # link_count is the position of the current link in the list.
-        for link_count, link in enumerate(favorites):
+        for link_count, link in enumerate(favorites, page_start):
             # if current position is divisable by 60, then increase the page number
             if link_count % 60 == 0:
                 LOGGER.info('--------- [PAGE %d] ---------',
-                            (link_count / 60) + 1)
-            self.detect_automatically(link)
+                            link_count / 60)
+
+            content = self.parse_url_by_content(link)
+            self.download_by_type (*content, link)
 
             if self.max_favorites == link_count + 1:
                 return
 
-    def download_album(self, ID):
+    def parse_id_by_type(self, url, type):
 
-        if not ID:
-            LOGGER.debug('ERROR: No album link given')
-            return
+        id = ''
+        for extension in IMGUR_BASE_EXTENSIONS[type]:
+            id = re.sub(BASE_URL_REGEX + extension, '', url)
 
-        # Try to get album_title
-        try:
-            album_title = self.client.get_album(ID).title
-        except ip.helpers.error.ImgurClientError:
-            album_title = None
+        return id
 
-        # If album_title is None after trying it's album object,
-        # Then maybe it's a gallery.
-        if not album_title:
-            try:
-                album_title = self.client.gallery_item(ID).title
-            except ip.helpers.error.ImgurClientError:
-                album_title = None
+    def parse_url_by_content(self, url):
+        """
+        This function takes a url and runs regular expressions against it.
+        Based on the regular expression that finds a match, the funciton will
+        call `parse_id_by_type` and pass the url along with the type of url found.
+        """
 
-        # If album_title is None at this point,
-        # Then use it's section as it's album name
-        if not album_title:
-            # Try to get album section, to use later
-            try:
-                section = self.client.get_album(ID).section
-            except ip.helpers.error.ImgurClientError:
-                section = None
+        id = ''
 
-            # If section was given at any point earlier,
-            # Then, use it to find the title
-            # unless exception, make album_title = None
-            if section is not None:
-                try:
-                    album_title = self.client.subreddit_image(
-                        section, ID).title
-                except ip.helpers.error.ImgurClientError:
-                    album_title = None
+        for key in IMGUR_BASE_EXTENSIONS.keys():
+            for extension in IMGUR_BASE_EXTENSIONS[key]:
 
-        # If album_title still equals None, make the album title the ID
-        if album_title is None:
-            album_title = ID
+                result = re.search(BASE_URL_REGEX + extension, url)
 
-        # Look for invalid characters
-        album_title = self.replace_characters(album_title)
+                if result and key == 'album':
+                    id = self.parse_id_by_type(url, 'album')
+                    LOGGER.debug('ID: %s', id)
+                    return id, 'album'
 
-        # Alert the user
-        LOGGER.info('Downloading album: ' + album_title)
+                elif result and key == 'gallery':
+                    id = self.parse_id_by_type(url, 'gallery')
+                    LOGGER.debug('ID: %s', id)
+                    return id, 'gallery'
 
-        # Try to see if it is an album
-        for position, image in enumerate(self.client.get_album(ID).images):
-            try:
-                self.download_image(image['link'], album_title, position + 1)
+                elif result and key == 'subreddit':
+                    id = self.parse_id_by_type(url, 'subreddit')
+                    LOGGER.debug('ID: %s', id)
+                    return id, 'subreddit'
 
-            except ip.helpers.error.ImgurClientError as e:
-                LOGGER.debug(
-                    'ERROR: Could not finish album download' + str(image['link']) + str(e))
-        # LOGGER.info('Finished album: ' + album_title)
+                elif result and key == 'tag':
+                    id = self.parse_id_by_type(url, 'tag')
+                    LOGGER.debug('ID: %s', id)
+                    return id, 'tag'
 
-    def download_image(self, url='', directory_name=None, album_position=0):
+                elif result and key == 'image':
+                    id = result.group(6)
+                    LOGGER.debug('ID: %s', id)
+                    return id, 'image'
 
+        return url, None
+
+    def download(self, images, title, is_album = False):
+        """Should take in a list to download. If a folder name is specified then
+        download to default directory using folder_name.
+        """
         # Max length of a file name [Windows]
         MAX_NAME_LENGTH = 65
+        path = CONFIGURATION['download_folder_path']
 
-        # Changes .gifv links to .gif since imgur supports this transfer
-        if url[-4:] == 'gifv':
-            url = url[:-4] + 'gif'
+        title = self.replace_characters(title)
 
-        # Create File Name
+        if len(title) > MAX_NAME_LENGTH:
+            title = title[:MAX_NAME_LENGTH]
 
-        """ Link names """
-        if album_position == 0:
-            link_name = url[url.rfind('/') + 1:]
+        if is_album:
+            path = os.path.join(CONFIGURATION['download_folder_path'], title)
+
+            if not os.path.exists(path):
+                os.mkdir(path)
+
+        for pos, image in enumerate(images):
+            # Last resort (Edge Cases)
+            if image[-4:] == 'gifv':
+                image = image[:-1]
+
+            extension = image[image.rfind('.'):]
+
+            if is_album:
+                filename = title + ' - ' + str(pos + 1) + extension
+                download_path = os.path.join(path, filename)
+                LOGGER.info('Downloading: ' + filename)
+
+            else:
+                filename = title + extension
+                download_path = os.path.join(path, filename)
+                LOGGER.info('Downloading: ' + title + extension)
+
+            if os.path.exists(download_path) and not self.overwrite:
+                LOGGER.info('\tSkipping: ' + download_path)
+                continue
+
+            req = requests.get(image, stream=True)
+            if req.status_code == 200:
+
+                # Number of bytes in a megabyte : float(1 << 20)
+                file_size = int(req.headers.get('content-length', 0)) / \
+                            float(1 << 20)
+
+                LOGGER.info('\t%s, File Size: %.2f MB', filename, file_size )
+
+                with open(download_path, 'wb') as image_file:
+                    req.raw.decode_content = True
+                    shutil.copyfileobj(req.raw, image_file)
+            else:
+                LOGGER.info('\tERROR! Can not download: ' + download_path)
+                LOGGER.info('\tStatus code: ' + str(req.status_code))
+
+    def download_by_type(self, id, type, url):
+        header = {'Authorization': 'Client-ID %s' % CONFIGURATION['client_id']}
+        links = []
+        details = None
+
+        if type == 'album':
+            url = IMGUR_API_URLS['album']['base'].format(albumHash=id)
+            req = requests.get(url, headers = header)
+            details = json.loads(req.text)['data']
+
+        elif type == 'gallery':
+            url = IMGUR_API_URLS['gallery']['base'].format(section=id)
+            req = requests.get(url, headers = header)
+            details = json.loads(req.text)['data']
+
+        elif type == 'subreddit':
+
+            # Need subreddit
+            result = re.search(r'(/r/)(\w+/)', url)[0].replace('/r/', '')
+            subreddit = result[:-1]
+
+            url = IMGUR_API_URLS['subreddit']['image'].format(subreddit = subreddit,
+                                                              subredditImageId = id)
+            req = requests.get(url, headers = header)
+            details = json.loads(req.text)['data'][0]
+
+        elif type == 'tag':
+            # Use the ['gallery']['base'] url since there are
+            # edge cases that don't work with ['tag']['base']
+            url = IMGUR_API_URLS['gallery']['base'].format(section=id)
+            req = requests.get(url, headers = header)
+            details = json.loads(req.text)['data']
+
+        elif type == 'image':
+            url = IMGUR_API_URLS['image']['base'].format(imageHash = id)
+            req = requests.get(url, headers = header)
+            details = json.loads(req.text)['data']
 
         else:
-            # First erase invalid characters
-            link_name = directory_name[:MAX_NAME_LENGTH] + \
-                ' - ' + str(album_position)
-            link_name = self.replace_characters(link_name)
+            details = {'link' : url,
+                       'title' : url[url.rfind('/')+1:url.rfind('.')]}
 
-            # Then add file_extension
-            file_extension = url[url.rfind('.'):]
-            link_name += file_extension
+        # Find images
+        if 'images' in details:
+            for image in details['images']:
+                # prefer mp4
+                if 'mp4' in image:
+                    links.append(image['mp4'])
+                elif 'gif' in image:
+                    links.append(image['gif'])
+                else:
+                    links.append(image['link'])
 
-        """ Directory Name """
-        # If directory_name is given, make it the new folder name
-        if directory_name is not None:
+        elif 'link' in details:
 
-            if len(directory_name) > MAX_NAME_LENGTH:
-                directory_name = directory_name[:MAX_NAME_LENGTH]
+            if 'mp4' in details:
+                links.append(details['mp4'])
+            elif 'gif' in details:
+                links.append(details['gif'])
+            else:
+                links.append(details['link'])
 
-            directory_name = self.replace_characters(directory_name)
-            directory_name = self.desired_folder_path + directory_name
-            directory_name = self.check_folder_path(directory_name)
+        # Find title
+        if not 'title' in details or details['title'] is None:
+            title = str(id)
 
-        # Else make the desired_folder_path the folder to download in
-        elif self.single_images_folder:
-            directory_name = self.desired_folder_path + 'Single-Images/'
+        elif type is not None:
+            title = details['title'] + ' - ' + str(id)
 
         else:
-            directory_name = self.desired_folder_path
+            title = details['title']
 
-        # Make directory if not existed
-        if not os.path.exists(directory_name):
-            os.makedirs(directory_name)
-
-        # If directory exists and user does not want to overwrite, skip
-        elif os.path.exists(directory_name + link_name) and not self.overwrite:
-            LOGGER.info('\tSkipping: ' + directory_name + link_name)
-            return
-
-        # Make GET request
-        req = requests.get(url, stream=True)
-        LOGGER.debug("Request: %s %s %s",
-                     req.request.method,
-                     req.request.url,
-                     req.request.body)
-
-        if req.status_code == 200:
-
-            # Download image to path + file name
-            file_size = req.headers.get('content-length', 0)
-            LOGGER.info('\t%s, File Size: %.2f MB',
-                        link_name,
-                        int(file_size) / MBFACTOR)
-            with open(directory_name + link_name, 'wb') as image_file:
-                req.raw.decode_content = True
-                shutil.copyfileobj(req.raw, image_file)
+        #Pass to download
+        if type == 'album' or type == 'gallery' or type == 'tag':
+            self.download (links, title, True)
         else:
-            LOGGER.debug('ERROR: Could not find url! ' + str(url))
-
-    def change_desired_folder_path(self, folder_path):
-        self.desired_folder_path = self.check_folder_path(folder_path)
-
-        """
-        If directory not given then get the absolute path.
-        This is done since I had problems using relative paths during testing.
-        Needed to make sure it was given a absolute path.
-        """
-        if self.desired_folder_path == '.' or self.desired_folder_path == './':
-            absolute_path = self.check_folder_path(os.getcwd())
-            self.desired_folder_path = absolute_path
-
-        self.check_if_folder_exists()
+            self.download (links, title)

@@ -1,8 +1,7 @@
 {
     "access_token": "",
-    "client_id": "",
-    "client_secret": "",
+    "client_id": "625a887cd3cf518",
+    "client_secret": "6e2d91bd615c8ba959e82c3a956ff8c1135c10fd",
     "download_folder_path": ".",
-    "refresh_token": "",
-    "single_images_folder": false
+    "refresh_token": ""
 }

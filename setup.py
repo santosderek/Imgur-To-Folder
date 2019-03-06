@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import sys
 
 setup(name='ImgurToFolder',
-      version='0.7',
+      version='0.8',
       description='Imgur Downloader to a folder of your choice.',
       author='Derek Santos',
       license='The MIT License (MIT)',
@@ -18,7 +18,6 @@ setup(name='ImgurToFolder',
       },
       package_data={'imgurtofolder': ['config.json']},
       install_requires=[
-          'requests',
-          'imgurpython==1.1.7'
+          'requests'
       ]
       )
