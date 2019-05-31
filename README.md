@@ -1,6 +1,5 @@
 ![Dyrenex Software](Dyrenex_Software.png)
 
-
 # Imgur-To-Folder
 Download Imgur albums and images to desired folder with one command.
 
