@@ -19,6 +19,9 @@ def parse_arguments():
     parser.add_argument('--folder', '-f', metavar='FOLDER_PATH',
                         type=str, help='Change desired folder path')
 
+    parser.add_argument('--change-default-folder', metavar='FOLDER_PATH',
+                        type=str, help='Change the default desired folder path')
+
     parser.add_argument('--download-latest-favorites', '-df', metavar='USERNAME',
                         type=str, help='Download latest favorited images to folder')
 
@@ -97,6 +100,9 @@ def main():
 
     log.debug('Setting Imgur class')
     imgur_class = imgur.Imgur(config)
+
+    if args.change_default_folder:
+        imgur_class.change_default_folder(args.change_default_folder)
 
     log.debug('Setting Imgur Downloader Class')
     downloader = imgur_downloader.Imgur_Downloader(imgur_class)

@@ -32,7 +32,11 @@ class Configuration:
     def set_download_path(self, path):
         log.debug('Setting download_path')
         self._download_path = path
-        self.save_configuration()
+
+    def set_default_download_path(self, path):
+        log.debug('Setting download_path')
+        self._download_path = path
+        self.save_configuration(True)
 
     def set_refresh_token(self, token):
         log.debug('Setting refresh token')
@@ -57,19 +61,20 @@ class Configuration:
     def get_overwrite(self):
         return self._overwrite
 
-    def convert_config_to_dict(self):
+    def convert_config_to_dict(self, add_download_path=False):
         log.debug('Converting configuration to json')
         current_config = {}
         current_config['access_token'] = self._access_token
         current_config['client_id'] = self._client_id
         current_config['client_secret'] = self._client_secret
-        current_config['download_path'] = self._download_path
+        if add_download_path:
+            current_config['download_path'] = self._download_path
         current_config['refresh_token'] = self._refresh_token
         return current_config
 
-    def save_configuration(self):
+    def save_configuration(self, add_download_path=False):
         log.debug('Saving configuration')
-        config_dict = self.convert_config_to_dict()
+        config_dict = self.convert_config_to_dict(add_download_path)
 
         if self._config_path[-len('.json'):]:
             folder_path = self._config_path[:self._config_path.rfind('/')]
