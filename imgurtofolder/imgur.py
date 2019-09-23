@@ -167,6 +167,33 @@ class Imgur:
         response = requests.request('GET', url, headers = headers)
         return response.json()
 
+    def get_tag(self, tag, sort='top', window='week', page=0, max_items=30):
+        headers = {
+            'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
+        }
+
+        log.info('Getting page %d of items' % page)
+        items = []
+        url = f'https://api.imgur.com/3/gallery/t/{tag}/{sort}/{window}/{page}'
+        response = requests.request('GET', url, headers = headers)
+
+        while len(items) < max_items and not 'error' in response.json()['data']:
+
+
+            if response.status_code == 200 and not 'error' in response.json()['data']:
+                response_json = response.json()['data']
+
+                for item in response_json['items']:
+                    items.append(item)
+
+                url = f'https://api.imgur.com/3/gallery/t/{tag}/{sort}/{window}/{page}'
+                log.debug('Url to download: %s' % url)
+                response = requests.request('GET', url, headers = headers)
+
+            page += 1
+
+        return items[:max_items + 1]
+
 
 
     def replace_characters(self, word):

@@ -28,7 +28,7 @@ def parse_arguments():
     parser.add_argument('--download-account-images', '-dai', metavar='USERNAME',
                         type=str, help='Download account images to folder')
 
-    parser.add_argument('--max-favorites', metavar='NUMBER_OF_MAX',
+    parser.add_argument('--max-downloads', metavar='NUMBER_OF_MAX', default=50,
                         type=int,  help='Specify the max number of favorites to download')
 
     parser.add_argument('--page-start', metavar='STARTING_PAGE', default = 0,
@@ -103,19 +103,34 @@ def main():
 
     log.debug('Imgur Downloader parse id')
     for item in args.urls:
-        downloader.parse_id(item)
+        try:
+            downloader.parse_id(item,
+                                page=args.page_start,
+                                max_items=args.max_downloads)
 
-    if args.download_latest_favorites is not None:
-        downloader.download_favorites(args.download_latest_favorites, page=args.page_start, max_items=args.max_favorites)
+            if args.download_latest_favorites is not None:
+                downloader.download_favorites(args.download_latest_favorites,
+                                              page=args.page_start,
+                                              max_items=args.max_downloads)
 
-    if args.download_oldest_favorites is not None:
-        downloader.download_favorites(args.download_oldest_favorites, latest=False, page=args.page_start, max_items=args.max_favorites)
+            if args.download_oldest_favorites is not None:
+                downloader.download_favorites(args.download_oldest_favorites,
+                                              latest=False,
+                                              page=args.page_start,
+                                              max_items=args.max_downloads)
 
-    if args.list_all_favorites is not None:
-        downloader.list_favorites(args.list_all_favorites, latest=True, page=args.page_start, max_items=args.max_favorites)
+            if args.list_all_favorites is not None:
+                downloader.list_favorites(args.list_all_favorites,
+                                          latest=True,
+                                          page=args.page_start,
+                                          max_items=args.max_downloads)
 
-    if args.download_account_images is not None:
-        downloader.download_account_images(args.download_account_images, page=args.page_start, max_items=args.max_favorites)
+            if args.download_account_images is not None:
+                downloader.download_account_images(args.download_account_images,
+                                                   page=args.page_start,
+                                                   max_items=args.max_downloads)
+        except Exception as e:
+            log.info('Error! %s' % e)
 
     log.info('Done.')
 

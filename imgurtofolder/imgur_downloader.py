@@ -5,7 +5,7 @@ import re
 import requests
 import shutil
 from time import sleep
-
+import json
 log = logs.Log('downloader')
 
 class Imgur_Downloader:
@@ -29,12 +29,12 @@ class Imgur_Downloader:
 
         return word
 
-    def parse_id(self, url):
+    def parse_id(self, url, page=0, max_items=30):
         imgur_base_extensions = {
             'album' : [r'(/a/)(\w+)'],
             'gallery' : [r'(/g/)(\w+)', r'(/gallery/)(\w+)'],
             'subreddit' : [r'(/r/)(\w+)\/(\w+)'],
-            'tag' : [r'(/t/)(\w+/)']
+            'tag' : [r'(/t/)(\w+)']
         }
 
         if any(re.search(item, url) for item in imgur_base_extensions['album']):
@@ -53,15 +53,13 @@ class Imgur_Downloader:
             for item in imgur_base_extensions['subreddit']:
                 if re.search(item, url):
                     subreddit, id = re.search(item, url).group(2), re.search(item, url).group(3)
-                else:
-                    continue
-                self.download_subreddit_gallery(subreddit, id)
+                    self.download_subreddit_gallery(subreddit, id)
 
         elif any(re.search(item, url) for item in imgur_base_extensions['tag']):
             for item in imgur_base_extensions['tag']:
                 result = re.search(item, url).group(2) if re.search(item, url) else None
                 if result:
-                    self.download_tag(result)
+                    self.download_tag(result, page=page, max_items=max_items)
 
         else:
             log.info('Downloading image: %s' % url[url.rfind('/') + 1:])
@@ -79,6 +77,50 @@ class Imgur_Downloader:
             filetype = image_link[image_link.rfind('.'):]
 
         return image_link, filetype
+
+    def mkdir(self, path):
+        log.debug("Checking if folder exists")
+        if not os.path.exists(path):
+            log.debug("Creating folder: %s" % path)
+            os.mkdir(path)
+
+    def download_tag(self, id, page=0, max_items=30):
+        log.debug('Getting tag details')
+        items = self._imgur.get_tag(id, page=page, max_items=max_items)
+
+        # For each item in tag. Items are "albums"
+        for item in items:
+
+            if 'images' in item:
+                tag_root_title = item['title'] if item['title'] else item['id']
+                tag_root_title = self.replace_characters(tag_root_title)
+                tag_root_path  = os.path.join(self._imgur.get_download_path(), tag_root_title)
+                self.mkdir(tag_root_path)
+
+                for position, sub_image in enumerate(item['images'], start=1):
+                    title = sub_image['title'] if sub_image['title'] else sub_image['id']
+                    title = self.replace_characters(title)
+                    path  = os.path.join(tag_root_path, title)
+
+                    self.mkdir(path)
+
+                    log.info('Downloading tag: %s' % title)
+                    image_link, filetype = self.get_image_link(sub_image)
+                    image_filename = "{} - {}{}".format(sub_image['id'], position, filetype)
+                    self.download(image_filename, image_link, path)
+
+            else:
+                title = item['title'] if item['title'] else item['id']
+                title = self.replace_characters(title)
+                path  = os.path.join(self._imgur.get_download_path(), title)
+
+                self.mkdir(path)
+
+                log.info('Downloading tag: %s' % title)
+                image_link, filetype = self.get_image_link(sub_image)
+                image_filename = "{} - {}{}".format(sub_image['id'], position, filetype)
+                self.download(image_filename, image_link, path)
+
 
     def download_album(self, id):
 
