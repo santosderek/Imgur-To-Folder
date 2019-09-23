@@ -102,7 +102,7 @@ def main():
     imgur_class = imgur.Imgur(config)
 
     if args.change_default_folder:
-        imgur_class.change_default_folder(args.change_default_folder)
+        imgur_class.set_default_folder_path(args.change_default_folder)
 
     log.debug('Setting Imgur Downloader Class')
     downloader = imgur_downloader.Imgur_Downloader(imgur_class)

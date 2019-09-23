@@ -22,7 +22,7 @@ class Imgur:
 
     def set_default_folder_path(self, path):
         log.debug('Chaning download path')
-        self._configuration.set_default_folder_path(path)
+        self._configuration.set_default_download_path(path)
 
     def get_download_path(self):
         return self._configuration.get_download_path()
