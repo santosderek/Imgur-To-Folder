@@ -62,7 +62,7 @@ Or for simplicity, you can use:
 
 ***Change folder path to download***
 
-    imgurtofolder --folder FOLDER_PATH_HERE | OR | imgurtofolder -f  FOLDER_PATH_HERE
+    imgurtofolder --folder FOLDER-PATH-HERE | OR | imgurtofolder -f  FOLDER-PATH-HERE
 
 ***Download all account images within your profile***
 
@@ -90,15 +90,15 @@ Or for simplicity, you can use:
 
 *To limit number of favorites to download use `--max-favorites`:*
 
-    imgurtofolder --download-latest-favorites [username] --max_favorites [maximum_number_of_favorites]
+    imgurtofolder --download-latest-favorites [username] --max-favorites [maximum_number_of_favorites]
 
     [OR]
 
-    imgurtofolder --download-oldest-favorites [username] --max_favorites [maximum_number_of_favorites]
+    imgurtofolder --download-oldest-favorites [username] --max-favorites [maximum_number_of_favorites]
 
 *Example for latest 60 favorites*
 
-    imgurtofolder --download-latest-favorites [username] --max_favorites 60
+    imgurtofolder --download-latest-favorites [username] --max-favorites 60
 
 ***Over-write existing files (disables skipping)***
 

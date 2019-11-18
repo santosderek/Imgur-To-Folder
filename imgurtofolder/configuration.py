@@ -13,7 +13,7 @@ class Configuration:
         self._config_path   = config_path
         self._access_token  = access_token
         self._client_id     = client_id
-        self._client_secret = client_id
+        self._client_secret = client_secret
         self._download_path = download_path
         self._refresh_token = refresh_token
         self._overwrite     = overwrite
@@ -27,6 +27,11 @@ class Configuration:
     def set_client_id(self, client_id):
         log.debug('Setting client_id')
         self._client_id = client_id
+        self.save_configuration()
+
+    def set_client_secret(self, client_secret):
+        log.debug('Setting client_secret')
+        self._client_secret = client_secret
         self.save_configuration()
 
     def set_download_path(self, path):
@@ -61,20 +66,22 @@ class Configuration:
     def get_overwrite(self):
         return self._overwrite
 
-    def convert_config_to_dict(self, add_download_path=False):
+    def convert_config_to_dict(self, overwrite_download_path=False):
         log.debug('Converting configuration to json')
         current_config = {}
         current_config['access_token'] = self._access_token
         current_config['client_id'] = self._client_id
         current_config['client_secret'] = self._client_secret
-        if add_download_path:
+        if overwrite_download_path:
             current_config['download_path'] = self._download_path
+        elif self.get_download_path():
+            current_config['download_path'] = self.get_download_path()
         current_config['refresh_token'] = self._refresh_token
         return current_config
 
-    def save_configuration(self, add_download_path=False):
+    def save_configuration(self, overwrite_download_path=False):
         log.debug('Saving configuration')
-        config_dict = self.convert_config_to_dict(add_download_path)
+        config_dict = self.convert_config_to_dict(overwrite_download_path)
 
         if self._config_path[-len('.json'):]:
             folder_path = self._config_path[:self._config_path.rfind('/')]
@@ -82,9 +89,8 @@ class Configuration:
             folder_path = self._config_path
 
         if not os.path.exists(folder_path):
-            log.debug('Making config directory')
-            mkdir(folder_path)
-
+            log.debug('Creating config directory')
+            os.makedirs(folder_path)
 
         with open(self._config_path, 'w') as current_file:
             json.dump(config_dict, current_file, sort_keys=True, indent=4)

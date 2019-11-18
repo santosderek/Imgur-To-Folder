@@ -31,7 +31,7 @@ def parse_arguments():
     parser.add_argument('--download-account-images', '-dai', metavar='USERNAME',
                         type=str, help='Download account images to folder')
 
-    parser.add_argument('--max-downloads', metavar='NUMBER_OF_MAX', default=50,
+    parser.add_argument('--max-downloads', metavar='NUMBER_OF_MAX', default=-1,
                         type=int,  help='Specify the max number of favorites to download')
 
     parser.add_argument('--page-start', metavar='STARTING_PAGE', default = 0,
@@ -39,6 +39,9 @@ def parse_arguments():
 
     parser.add_argument('--list-all-favorites', '-lf', metavar='USERNAME',
                         type=str, help='List all favorites of a specified user')
+
+    parser.add_argument('--print-download-path', action='store_true',
+                        help='Print default download path.')
 
     parser.add_argument('--overwrite', action='store_true',
                         help='Write over existing content. (Disables skipping.)')
@@ -69,27 +72,25 @@ def main():
         with open(config_path, 'r') as current_file:
             data = json.load(current_file)
         config = configuration.Configuration(config_path   = config_path,
-                                                    access_token  = data['access_token'],
-                                                    client_id     = data['client_id'],
-                                                    client_secret = data['client_secret'],
-                                                    download_path = data['download_path'],
-                                                    refresh_token = data['refresh_token'],
-                                                    overwrite     = args.overwrite)
+                                             access_token  = data['access_token'],
+                                             client_id     = data['client_id'],
+                                             client_secret = data['client_secret'],
+                                             download_path = data['download_path'],
+                                             refresh_token = data['refresh_token'],
+                                             overwrite     = args.overwrite)
 
     else:
         log.debug('No configuation found!')
         result_config = create_config()
         config = configuration.Configuration(config_path   = config_path,
-                                                    client_id     = result_config['client_id'],
-                                                    client_secret = result_config['client_secret'],
-                                                    download_path = result_config['download_path'],
-                                                    overwrite     = args.overwrite)
-        config.save_configuration()
+                                             client_id     = result_config['client_id'],
+                                             client_secret = result_config['client_secret'],
+                                             download_path = result_config['download_path'],
+                                             overwrite     = args.overwrite)
+        config.save_configuration(True)
 
 
     log.debug('Reacting to args')
-    if args.folder is not None:
-        config.set_download_path(args.folder)
 
 
     if args.verbose:
@@ -98,45 +99,52 @@ def main():
         imgur_downloader.log.set_debug()
         configuration.log.set_debug()
 
-    log.debug('Setting Imgur class')
-    imgur_class = imgur.Imgur(config)
+    if args.print_download_path:
+        log.info('Default download path: ' + config.get_download_path())
+
+    downloader = imgur_downloader.Imgur_Downloader(config, args.max_downloads)
+
+    if args.folder is not None:
+        downloader.set_download_path(args.folder)
 
     if args.change_default_folder:
-        imgur_class.set_default_folder_path(args.change_default_folder)
+        downloader.set_default_folder_path(args.change_default_folder)
 
-    log.debug('Setting Imgur Downloader Class')
-    downloader = imgur_downloader.Imgur_Downloader(imgur_class)
+    if args.list_all_favorites is not None:
+        downloader.list_favorites(args.list_all_favorites,
+                                  latest=True,
+                                  page=args.page_start,
+                                  max_items=args.max_downloads)
 
-    log.debug('Imgur Downloader parse id')
+
+    log.debug('Parsing ids')
     for item in args.urls:
         try:
-            downloader.parse_id(item,
-                                page=args.page_start,
-                                max_items=args.max_downloads)
-
-            if args.download_latest_favorites is not None:
-                downloader.download_favorites(args.download_latest_favorites,
-                                              page=args.page_start,
-                                              max_items=args.max_downloads)
-
-            if args.download_oldest_favorites is not None:
-                downloader.download_favorites(args.download_oldest_favorites,
-                                              latest=False,
-                                              page=args.page_start,
-                                              max_items=args.max_downloads)
-
-            if args.list_all_favorites is not None:
-                downloader.list_favorites(args.list_all_favorites,
-                                          latest=True,
-                                          page=args.page_start,
-                                          max_items=args.max_downloads)
-
-            if args.download_account_images is not None:
-                downloader.download_account_images(args.download_account_images,
-                                                   page=args.page_start,
-                                                   max_items=args.max_downloads)
+            downloader.parse_id(item, page=args.page_start, max_items=args.max_downloads)
         except Exception as e:
-            log.info('Error! %s' % e)
+            message = 'Error with url {}. Error Message: {}'.format(item, e)
+            log.error(message)
+
+
+    if args.download_latest_favorites is not None:
+        log.debug('Downloading latest favorites')
+        downloader.download_favorites(args.download_latest_favorites,
+                                      page=args.page_start,
+                                      max_items=args.max_downloads)
+
+    if args.download_oldest_favorites is not None:
+        log.debug('Downloading oldest favorites')
+        downloader.download_favorites(args.download_oldest_favorites,
+                                      latest=False,
+                                      page=args.page_start,
+                                      max_items=args.max_downloads)
+
+    if args.download_account_images is not None:
+        log.debug('Downloading account images')
+        downloader.download_account_images(args.download_account_images,
+                                           page=args.page_start,
+                                           max_items=args.max_downloads)
+
 
     log.info('Done.')
 

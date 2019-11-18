@@ -1,22 +1,20 @@
 # Derek Santos
 import logs
 import os
+from pprint import pformat
 import re
 import requests
 import shutil
 from time import sleep
 import json
+from imgur import Imgur
 log = logs.Log('downloader')
 
-class Imgur_Downloader:
-    def __init__(self,
-                 imgur,
-                 verbose=False,
-                 max_favorites=None):
+class Imgur_Downloader(Imgur):
+    def __init__(self, configuration, max_favorites):
 
-        self._imgur = imgur
+        super().__init__(configuration)
         self._max_favorites = max_favorites
-        self._overwrite = self._imgur.get_overwrite()
 
     def replace_characters(self, word):
         # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
@@ -63,7 +61,7 @@ class Imgur_Downloader:
 
         else:
             log.info('Downloading image: %s' % url[url.rfind('/') + 1:])
-            self.download(url[url.rfind('/') + 1:], url, self._imgur.get_download_path())
+            self.download(url[url.rfind('/') + 1:], url, self.get_download_path())
 
     def get_image_link(self, image):
         if 'mp4' in image:
@@ -86,7 +84,7 @@ class Imgur_Downloader:
 
     def download_tag(self, id, page=0, max_items=30):
         log.debug('Getting tag details')
-        items = self._imgur.get_tag(id, page=page, max_items=max_items)
+        items = self.get_tag(id, page=page, max_items=max_items)
 
         # For each item in tag. Items are "albums"
         for item in items:
@@ -94,7 +92,7 @@ class Imgur_Downloader:
             if 'images' in item:
                 tag_root_title = item['title'] if item['title'] else item['id']
                 tag_root_title = self.replace_characters(tag_root_title)
-                tag_root_path  = os.path.join(self._imgur.get_download_path(), tag_root_title)
+                tag_root_path  = os.path.join(self.get_download_path(), tag_root_title)
                 self.mkdir(tag_root_path)
 
                 for position, sub_image in enumerate(item['images'], start=1):
@@ -112,7 +110,7 @@ class Imgur_Downloader:
             else:
                 title = item['title'] if item['title'] else item['id']
                 title = self.replace_characters(title)
-                path  = os.path.join(self._imgur.get_download_path(), title)
+                path  = os.path.join(self.get_download_path(), title)
 
                 self.mkdir(path)
 
@@ -125,10 +123,10 @@ class Imgur_Downloader:
     def download_album(self, id):
 
         log.debug('Getting album details')
-        album = self._imgur.get_album(id)['data']
+        album = self.get_album(id)['data']
         title = album['title'] if album['title'] else album['id']
         title = self.replace_characters(title)
-        path  = os.path.join(self._imgur.get_download_path(), title)
+        path  = os.path.join(self.get_download_path(), title)
 
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
@@ -147,10 +145,10 @@ class Imgur_Downloader:
     def download_gallery(self, id):
 
         log.debug('Getting Gallery details')
-        album = self._imgur.get_gallery_album(id)['data']
+        album = self.get_gallery_album(id)['data']
         title = album['title'] if album['title'] else album['id']
         title = self.replace_characters(title)
-        path  = os.path.join(self._imgur.get_download_path(), title)
+        path  = os.path.join(self.get_download_path(), title)
 
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
@@ -175,10 +173,10 @@ class Imgur_Downloader:
     def download_subreddit_gallery(self, subreddit, id):
 
         log.debug('Getting subreddit gallery details')
-        subreddit_album = self._imgur.get_subreddit_image(subreddit, id)['data']
+        subreddit_album = self.get_subreddit_image(subreddit, id)['data']
         title = subreddit_album['title'] if subreddit_album['title'] else subreddit_album['id']
         title = self.replace_characters(title)
-        path  = self._imgur.get_download_path()
+        path  = self.get_download_path()
 
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
@@ -188,29 +186,28 @@ class Imgur_Downloader:
         log.info('Downloading subreddit gallery image: %s' % title)
         image_link, filetype = self.get_image_link(subreddit_album)
         filename = image_link[image_link.rfind('/') + 1:]
-        self.download(filename, image_link, self._imgur.get_download_path())
+        self.download(filename, image_link, self.get_download_path())
 
 
     def download_favorites(self, username, latest=True, page=0, max_items=None):
-        favorites = self._imgur.get_account_favorites(username = username,
+        log.info("Getting account favorites")
+        favorites = self.get_account_favorites(username = username,
                                                       sort = 'oldest' if not latest else 'newest',
-                                                      page=page)
-        if max_items:
-            favorites = favorites[:max_items]
+                                                      page=page,
+                                                      max_items=max_items)
+        log.debug('Number of favorites: %d' % len(favorites))
         for favorite in favorites:
             self.parse_id(favorite['link'])
 
-    def list_favorites(self, username, latest=True, page=0, max_items=None):
-        favorites = self._imgur.get_account_favorites(username = username,
+    def list_favorites(self, username, latest=True, page=0, max_items=-1):
+        favorites = self.get_account_favorites(username = username,
                                                       sort = 'oldest' if not latest else 'newest',
-                                                      page=page)
-        if max_items:
-            favorites = favorites[:max_items]
-        for favorite in favorites:
-            log.info(favorite)
+                                                      page=page,
+                                                      max_items=max_items)
+        log.info(pformat(favorites))
 
     def download_account_images(self, username, page=0, max_items=None):
-        account_images = self._imgur.get_account_images(username, page=page)
+        account_images = self.get_account_images(username, page=page)
 
         if max_items:
             account_images = account_images[:max_items]
@@ -226,7 +223,7 @@ class Imgur_Downloader:
             os.mkdir(path)
 
         log.debug('Checking to overwrite')
-        if not self._overwrite and os.path.exists(os.path.join(path, filename)):
+        if not self.get_overwrite() and os.path.exists(os.path.join(path, filename)):
             log.info('\tSkipping %s' % filename)
             return
 

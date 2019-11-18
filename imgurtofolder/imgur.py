@@ -1,8 +1,10 @@
 import logs
+from pprint import pformat
 import re
 import requests
 import webbrowser
 from time import sleep
+import os
 
 log = logs.Log('imgur')
 
@@ -18,10 +20,14 @@ class Imgur:
 
     def set_download_path(self, path):
         log.debug('Chaning download path')
+        if not os.path.exists(path):
+            os.makedirs(path)
         self._configuration.set_download_path(path)
 
     def set_default_folder_path(self, path):
         log.debug('Chaning download path')
+        if not os.path.exists(path):
+            os.makedirs(path)
         self._configuration.set_default_download_path(path)
 
     def get_download_path(self):
@@ -71,28 +77,34 @@ class Imgur:
         # TODO: Make sure this works
         self._configuration.set_access_token(response_json['access_token'])
 
+    def get_url_data(self, url, headers, data):
+            response = requests.request('GET', url,  headers=headers, data=data)
+            if response.status_code == 200 and not 'error' in response.json()['data']:
+                return response.json()['data']
+            else:
+                message = (response.status_code, pformat(response.json()['data']))
+                log.error(' '.join(message))
+                raise Exception(message)
+
     def get_account_images(self, username, page=0):
-        url = f'https://api.imgur.com/3/account/{username}/images/{page}'
+
         if not self._configuration.get_access_token():
             self.authorize()
 
+        url = f'https://api.imgur.com/3/account/{username}/images/{page}'
         headers = {
             'Authorization': 'Bearer %s' % self._configuration.get_access_token()
         }
-        response = requests.request('GET', url, headers = headers)
         account_images = []
-        log.info('Getting page %d of account images' % page)
-        if response.status_code == 200:
-            for item in response.json()['data']:
-                account_images.append(item)
+        response = self.get_url_data(url, headers, None)
 
-        while response.status_code == 200 and len(response.json()['data']) != 0 and not 'error' in response.json()['data']:
-            page += 1
+        while len(response) != 0:
             log.info('Getting page %d of account images' % page)
-            url = f'https://api.imgur.com/3/account/{username}/images/{page}'
-            response = requests.request('GET', url, headers = headers)
-            for item in response.json()['data']:
+            for item in response:
                 account_images.append(item)
+            url = f'https://api.imgur.com/3/account/{username}/images/{page}'
+            response = self.get_url_data(url, headers, None)
+            page += 1
 
         return account_images
 
@@ -104,8 +116,7 @@ class Imgur:
         response = requests.request('GET', url, headers = headers)
         return response.json()
 
-    def get_account_favorites(self, username, sort='newest', page=0):
-        url = f'https://api.imgur.com/3/account/{username}/favorites/{page}/{sort}'
+    def get_account_favorites(self, username, sort='newest', page=0, max_items=-1):
 
         if not self._configuration.get_access_token():
             self.authorize()
@@ -113,21 +124,19 @@ class Imgur:
         headers = {
             'Authorization': 'Bearer %s' % self._configuration.get_access_token()
         }
-        log.info('Getting page %d of favorites' % page)
-        response = requests.request('GET', url, headers = headers)
+        url = f'https://api.imgur.com/3/account/{username}/favorites/{page}/{sort}'
+        response = self.get_url_data(url, headers, None)
         favorites = []
+        while len(response) != 0:
+            if (max_items >= 0) and (len(favorites) > max_items):
+                return favorites[:max_items]
 
-        if response.status_code == 200:
-            for item in response.json()['data']:
-                favorites.append(item)
-
-        while response.status_code == 200 and len(response.json()['data']) != 0 and not 'error' in response.json()['data']:
-            page += 1
             log.info('Getting page %d of favorites' % page)
-            url = f'https://api.imgur.com/3/account/{username}/favorites/{page}/{sort}'
-            response = requests.request('GET', url, headers = headers)
-            for item in response.json()['data']:
+            for item in response:
                 favorites.append(item)
+            url = f'https://api.imgur.com/3/account/{username}/favorites/{page}/{sort}'
+            response = self.get_url_data(url, headers, None)
+            page += 1
 
         return favorites
 
@@ -176,37 +185,16 @@ class Imgur:
             'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
         }
 
-        log.info('Getting page %d of items' % page)
         items = []
         url = f'https://api.imgur.com/3/gallery/t/{tag}/{sort}/{window}/{page}'
-        response = requests.request('GET', url, headers = headers)
+        response = self.get_url_data(url, headers, None)
 
-        while len(items) < max_items and not 'error' in response.json()['data']:
+        while len(response) != 0 and len(items) < max_items:
+            for item in response['items']:
+                items.append(item)
 
-
-            if response.status_code == 200 and not 'error' in response.json()['data']:
-                response_json = response.json()['data']
-
-                for item in response_json['items']:
-                    items.append(item)
-
-                url = f'https://api.imgur.com/3/gallery/t/{tag}/{sort}/{window}/{page}'
-                log.debug('Url to download: %s' % url)
-                response = requests.request('GET', url, headers = headers)
-
+            url = f'https://api.imgur.com/3/gallery/t/{tag}/{sort}/{window}/{page}'
+            log.debug('Url to download: %s' % url)
+            response = self.get_url_data(url, headers, None)
             page += 1
-
         return items[:max_items + 1]
-
-
-
-    def replace_characters(self, word):
-        # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
-        invalid_characters = ['\\', "'", '/', ':',
-                              '*', '?', '"', '<',
-                              '>', '|', '.', '\n']
-
-        for character in invalid_characters:
-            word = word.replace(character, '')
-
-        return word
