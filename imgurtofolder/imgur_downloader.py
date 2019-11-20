@@ -136,7 +136,7 @@ class Imgur_Downloader(Imgur):
         log.info('Downloading album: %s' % title)
         for position, image in enumerate(album['images'], start=1):
             image_link, filetype = self.get_image_link(image)
-            image_filename = "{} - {}{}".format(image['id'], position, filetype)
+            image_filename = "{} - {}{}".format(album['id'], position, filetype)
 
             # log.info('\tDownloading %s' % image_filename)
             self.download(image_filename, image_link, path)
