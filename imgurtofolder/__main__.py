@@ -22,19 +22,19 @@ def parse_arguments():
     parser.add_argument('--change-default-folder', metavar='FOLDER_PATH',
                         type=str, help='Change the default desired folder path')
 
-    parser.add_argument('--download-latest-favorites', '-df', metavar='USERNAME',
-                        type=str, help='Download latest favorited images to folder')
+    parser.add_argument('--download-favorites', '-df', type=str, metavar='USERNAME',
+                        help="Username to download favorites of. Default: latest")
 
-    parser.add_argument('--download-oldest-favorites', '-do', metavar='USERNAME',
-                        type=str, help='Download oldest favorited images to folder')
+    parser.add_argument('--oldest', action='store_true',
+                        help="Sort favorites by oldest.")
 
     parser.add_argument('--download-account-images', '-dai', metavar='USERNAME',
                         type=str, help='Download account images to folder')
 
-    parser.add_argument('--max-downloads', metavar='NUMBER_OF_MAX', default=-1,
+    parser.add_argument('--max-downloads', metavar='NUMBER_OF_MAX',
                         type=int,  help='Specify the max number of favorites to download')
 
-    parser.add_argument('--page-start', metavar='STARTING_PAGE', default = 0,
+    parser.add_argument('--start-page', metavar='STARTING_PAGE', default = 0,
                         type=int,  help='Specify the starting page number for fravorites')
 
     parser.add_argument('--list-all-favorites', '-lf', metavar='USERNAME',
@@ -45,6 +45,12 @@ def parse_arguments():
 
     parser.add_argument('--overwrite', action='store_true',
                         help='Write over existing content. (Disables skipping.)')
+
+    parser.add_argument('--sort', choices=['time', 'top'], default='time',
+                        help='How to sort subreddit time duration.')
+
+    parser.add_argument('--window', choices=['day', 'week', 'month', 'year', 'all'], default='day',
+                        help='Window of time for the sort method when using subreddit links. (Append "--sort top")')
 
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Enables debugging output.')
@@ -102,7 +108,7 @@ def main():
     if args.print_download_path:
         log.info('Default download path: ' + config.get_download_path())
 
-    downloader = imgur_downloader.Imgur_Downloader(config, args.max_downloads)
+    downloader = imgur_downloader.Imgur_Downloader(config, args.max_downloads if args.max_downloads else 30)
 
     if args.folder is not None:
         downloader.set_download_path(args.folder)
@@ -113,37 +119,37 @@ def main():
     if args.list_all_favorites is not None:
         downloader.list_favorites(args.list_all_favorites,
                                   latest=True,
-                                  page=args.page_start,
-                                  max_items=args.max_downloads)
+                                  page=args.start_page,
+                                  max_items=args.max_downloads if args.max_downloads else -1)
 
 
     log.debug('Parsing ids')
     for item in args.urls:
         try:
-            downloader.parse_id(item, page=args.page_start, max_items=args.max_downloads)
+            downloader.parse_id(item,
+                                page=args.start_page,
+                                max_items=args.max_downloads if args.max_downloads else 30,
+                                sort=args.sort,
+                                window=args.window)
         except Exception as e:
-            message = 'Error with url {}. Error Message: {}'.format(item, e)
-            log.error(message)
+            message = 'Error with url {}. Error Message: \n\n'.format(item)
+            log.exception(message)
 
 
-    if args.download_latest_favorites is not None:
-        log.debug('Downloading latest favorites')
-        downloader.download_favorites(args.download_latest_favorites,
-                                      page=args.page_start,
-                                      max_items=args.max_downloads)
+    if args.download_favorites is not None:
+        log.debug('Downloading favorites by {}'.format("Oldest" if args.oldest else "Latest"))
+        downloader.download_favorites(args.download_favorites,
+                                      latest=not args.oldest,
+                                      page=args.start_page,
+                                      max_items=args.max_downloads if args.max_downloads else 30)
 
-    if args.download_oldest_favorites is not None:
-        log.debug('Downloading oldest favorites')
-        downloader.download_favorites(args.download_oldest_favorites,
-                                      latest=False,
-                                      page=args.page_start,
-                                      max_items=args.max_downloads)
+
 
     if args.download_account_images is not None:
         log.debug('Downloading account images')
         downloader.download_account_images(args.download_account_images,
-                                           page=args.page_start,
-                                           max_items=args.max_downloads)
+                                           page=args.start_page,
+                                           max_items=args.max_downloads if args.max_downloads else 30)
 
 
     log.info('Done.')

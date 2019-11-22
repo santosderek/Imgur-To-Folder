@@ -164,8 +164,8 @@ class Imgur:
         response = requests.request('GET', url, headers = headers)
         return response.json()
 
-    def get_subreddit_gallery(self, subreddit):
-        url = f'https://api.imgur.com/3/gallery/r/{subreddit}'
+    def get_subreddit_gallery(self, subreddit, sort='time', window='day', page=0):
+        url = f'https://api.imgur.com/3/gallery/r/{subreddit}/{sort}/{window}/{page}'
         headers = {
             'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
         }

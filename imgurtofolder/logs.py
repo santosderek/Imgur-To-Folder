@@ -61,5 +61,8 @@ class Log:
     def info(self, message):
         self._log.info(message)
 
+    def exception(self, message):
+        self._log.exception(message)
+
     def debug(self, message):
         self._log.debug(message)

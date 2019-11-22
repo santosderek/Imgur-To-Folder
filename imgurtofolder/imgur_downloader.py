@@ -27,11 +27,11 @@ class Imgur_Downloader(Imgur):
 
         return word
 
-    def parse_id(self, url, page=0, max_items=30):
+    def parse_id(self, url, page=0, max_items=30, sort='time', window='day'):
         imgur_base_extensions = {
             'album' : [r'(/a/)(\w+)'],
             'gallery' : [r'(/g/)(\w+)', r'(/gallery/)(\w+)'],
-            'subreddit' : [r'(/r/)(\w+)\/(\w+)'],
+            'subreddit' : [r'(/r/)(\w+)\/(\w+)', r'(/r/)(\w+)$'],
             'tag' : [r'(/t/)(\w+)']
         }
 
@@ -49,8 +49,16 @@ class Imgur_Downloader(Imgur):
 
         elif any(re.search(item, url) for item in imgur_base_extensions['subreddit']):
             for item in imgur_base_extensions['subreddit']:
-                if re.search(item, url):
-                    subreddit, id = re.search(item, url).group(2), re.search(item, url).group(3)
+                if re.search(item, url) is None:
+                    continue
+
+                subreddit = re.search(item, url).group(2)
+                id = re.search(item, url).group(3) if re.compile(item).groups > 2 else None
+
+                if id is None and subreddit is not None:
+                    self.download_subreddit(subreddit, sort=sort, window=window, page=page, max_items=max_items)
+
+                elif subreddit is not None and id is not None:
                     self.download_subreddit_gallery(subreddit, id)
 
         elif any(re.search(item, url) for item in imgur_base_extensions['tag']):
@@ -169,6 +177,20 @@ class Imgur_Downloader(Imgur):
             log.info('Downloading gallery image: %s' % filename)
             self.download(filename, image_link, path)
 
+    def download_subreddit(self, subreddit, sort='time', window='day', page=0, max_items=30):
+        log.debug("Getting subreddit details")
+        subreddit_data = []
+        response = self.get_subreddit_gallery(subreddit, sort=sort, window=window, page=page)['data']
+
+        while len(subreddit_data) < max_items and len(response) != 0:
+            subreddit_data += response
+            page += 1
+            response = self.get_subreddit_gallery(subreddit, sort, window, page)['data']
+
+        log.debug("Sending subreddit items to parse_id")
+        for position, item in enumerate(subreddit_data):
+            if position + 1 <= max_items:
+                self.parse_id(item["link"], page, max_items)
 
     def download_subreddit_gallery(self, subreddit, id):
 
