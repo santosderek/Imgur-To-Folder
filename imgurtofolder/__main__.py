@@ -7,6 +7,13 @@ import json
 import logs
 from os.path import expanduser, exists, join
 from sys import platform
+from traceback import print_exc
+
+HOME = expanduser('~')
+CONFIG_FOLDER_PATH = '.config/imgurToFolder'
+CONFIG_FILE_NAME = 'config.json'
+
+CONFIG_PATH = join(HOME, CONFIG_FOLDER_PATH, CONFIG_FILE_NAME)
 
 log = logs.Log('main')
 
@@ -16,10 +23,10 @@ def parse_arguments():
     parser.add_argument('urls', metavar='URLS', type=str,
                         nargs='*', help='Automatically detect urls')
 
-    parser.add_argument('--folder', '-f', metavar='FOLDER_PATH',
+    parser.add_argument('--folder', '-f', metavar='PATH',
                         type=str, help='Change desired folder path')
 
-    parser.add_argument('--change-default-folder', metavar='FOLDER_PATH',
+    parser.add_argument('--change-default-folder', metavar='PATH',
                         type=str, help='Change the default desired folder path')
 
     parser.add_argument('--download-favorites', '-df', type=str, metavar='USERNAME',
@@ -60,9 +67,30 @@ def parse_arguments():
 
 def create_config():
     log.info('First time setup!')
-    client_id = str(input('Paste your client id: '))
-    client_secret = str(input('Paste your client secret: '))
-    download_path = str(input('Paste your download path: '))
+
+    client_id = ""
+    client_secret = ""
+    download_path = ""
+
+    while not client_id: 
+        try: 
+            client_id = str(input('Paste your client id: '))
+        except Exception as e: 
+            log.debug("Error when getting client_id input", exc_info=True)
+
+    while not client_secret:
+        try: 
+            client_secret = str(input('Paste your client secret: '))
+        except Exception as e: 
+            log.debug("Error when getting client_secret input", exc_info=True)
+
+    while not download_path: 
+        try: 
+            download_path = str(input('Paste your download path: '))
+            download_path = expanduser(download_path)
+        except Exception as e: 
+            log.debug("Error when getting download_path input", exc_info=True)
+
     return {'client_id' : client_id,
             'client_secret' : client_secret,
             'download_path' : download_path}
@@ -72,12 +100,13 @@ def main():
     args = parse_arguments()
 
     log.debug('Checking configuation')
-    config_path = join(expanduser('~'), '.imgurToFolder', 'config.json')
-    if exists(config_path):
+    if exists(CONFIG_PATH):
         log.debug('Configuation Found!')
-        with open(config_path, 'r') as current_file:
+
+        with open(CONFIG_PATH, 'r') as current_file:
             data = json.load(current_file)
-        config = configuration.Configuration(config_path   = config_path,
+
+        config = configuration.Configuration(config_path   = CONFIG_PATH,
                                              access_token  = data['access_token'],
                                              client_id     = data['client_id'],
                                              client_secret = data['client_secret'],
@@ -88,7 +117,7 @@ def main():
     else:
         log.debug('No configuation found!')
         result_config = create_config()
-        config = configuration.Configuration(config_path   = config_path,
+        config = configuration.Configuration(config_path   = CONFIG_PATH,
                                              client_id     = result_config['client_id'],
                                              client_secret = result_config['client_secret'],
                                              download_path = result_config['download_path'],
@@ -111,7 +140,7 @@ def main():
     downloader = imgur_downloader.Imgur_Downloader(config, args.max_downloads if args.max_downloads else 30)
 
     if args.folder is not None:
-        downloader.set_download_path(args.folder)
+        downloader.set_download_path(expanduser(args.folder))
 
     if args.change_default_folder:
         downloader.set_default_folder_path(args.change_default_folder)
@@ -156,11 +185,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
 
-    # try:
-    #     main()
-    # except KeyboardInterrupt:
-    #     log.info('User Interupted! (KeyboardInterrupt)')
-    # except Exception as e:
-    #     log.info(e)
+    try:
+        main()
+    except KeyboardInterrupt:
+        log.info('User Interupted! (KeyboardInterrupt)')
+    except Exception as e:
+        log.info("Exception has occured", exc_info=True)

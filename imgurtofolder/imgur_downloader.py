@@ -1,13 +1,14 @@
 # Derek Santos
+from imgur import Imgur
+from pprint import pformat
+from time import sleep
+import json
 import logs
 import os
-from pprint import pformat
 import re
 import requests
 import shutil
-from time import sleep
-import json
-from imgur import Imgur
+
 log = logs.Log('downloader')
 
 class Imgur_Downloader(Imgur):
@@ -146,7 +147,6 @@ class Imgur_Downloader(Imgur):
             image_link, filetype = self.get_image_link(image)
             image_filename = "{} - {}{}".format(album['id'], position, filetype)
 
-            # log.info('\tDownloading %s' % image_filename)
             self.download(image_filename, image_link, path)
 
 
@@ -168,7 +168,6 @@ class Imgur_Downloader(Imgur):
             for position, image in enumerate(album['images'], start=1):
                 image_link, filetype = self.get_image_link(image)
                 filename = album['id'] + ' - ' + str(position) + filetype
-                # log.info("\tDownloading %s" % filename)
                 self.download(filename, image_link, path)
 
         else:
@@ -241,7 +240,7 @@ class Imgur_Downloader(Imgur):
 
         log.debug('Checking that folder path exists')
         if not os.path.exists(path):
-            los.debug('Creating folder path')
+            log.debug('Creating folder path')
             os.mkdir(path)
 
         log.debug('Checking to overwrite')

@@ -49,20 +49,20 @@ class Log:
     def set_critical(self):
         self.set_level(50)
 
-    def critical(self, message):
-        self._log.critical(message)
+    def critical(self, message, **kwargs):
+        self._log.critical(message, **kwargs)
 
-    def error(self, message):
-        self._log.error(message)
+    def error(self, message, **kwargs):
+        self._log.error(message, **kwargs)
 
-    def warning(self, message):
-        self._log.warning(message)
+    def warning(self, message, **kwargs):
+        self._log.warning(message, **kwargs)
 
-    def info(self, message):
-        self._log.info(message)
+    def info(self, message, **kwargs):
+        self._log.info(message, **kwargs)
 
     def exception(self, message):
         self._log.exception(message)
 
-    def debug(self, message):
-        self._log.debug(message)
+    def debug(self, message, **kwargs):
+        self._log.debug(message, **kwargs)
