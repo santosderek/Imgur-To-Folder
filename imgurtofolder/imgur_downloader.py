@@ -89,7 +89,7 @@ class Imgur_Downloader(Imgur):
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
             log.debug("Creating folder: %s" % path)
-            os.mkdir(path)
+            os.makedirs(path)
 
     def download_tag(self, id, page=0, max_items=30):
         log.debug('Getting tag details')
@@ -140,7 +140,7 @@ class Imgur_Downloader(Imgur):
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
             log.debug("Creating folder: %s" % path)
-            os.mkdir(path)
+            os.makedirs(path)
 
         log.info('Downloading album: %s' % title)
         for position, image in enumerate(album['images'], start=1):
@@ -161,7 +161,7 @@ class Imgur_Downloader(Imgur):
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
             log.debug("Creating folder: %s" % path)
-            os.mkdir(path)
+            os.makedirs(path)
 
         if 'images' in album:
             log.info('Downloading gallery %s' % album['id'])
@@ -202,7 +202,7 @@ class Imgur_Downloader(Imgur):
         log.debug("Checking if folder exists")
         if not os.path.exists(path):
             log.debug("Creating folder: %s" % path)
-            os.mkdir(path)
+            os.makedirs(path)
 
         log.info('Downloading subreddit gallery image: %s' % title)
         image_link, filetype = self.get_image_link(subreddit_album)
@@ -241,7 +241,7 @@ class Imgur_Downloader(Imgur):
         log.debug('Checking that folder path exists')
         if not os.path.exists(path):
             log.debug('Creating folder path')
-            os.mkdir(path)
+            os.makedirs(path)
 
         log.debug('Checking to overwrite')
         if not self.get_overwrite() and os.path.exists(os.path.join(path, filename)):
