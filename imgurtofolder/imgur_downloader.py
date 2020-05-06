@@ -26,6 +26,8 @@ class Imgur_Downloader(Imgur):
         for character in invalid_characters:
             word = word.replace(character, '')
 
+        word = word.strip()
+        
         return word
 
     def parse_id(self, url, page=0, max_items=30, sort='time', window='day'):
