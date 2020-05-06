@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import sys
 
 setup(name='ImgurToFolder',
-      version='0.9',
+      version='0.9.1',
       description='Imgur Downloader to a folder of your choice.',
       author='Derek Santos',
       license='Apache v2',

@@ -9,11 +9,10 @@ from os.path import expanduser, exists, join
 from sys import platform
 from traceback import print_exc
 
-HOME = expanduser('~')
-CONFIG_FOLDER_PATH = '.config/imgurToFolder'
+CONFIG_FOLDER_PATH = expanduser('~/.config/imgurToFolder')
 CONFIG_FILE_NAME = 'config.json'
 
-CONFIG_PATH = join(HOME, CONFIG_FOLDER_PATH, CONFIG_FILE_NAME)
+CONFIG_PATH = join(CONFIG_FOLDER_PATH, CONFIG_FILE_NAME)
 
 log = logs.Log('main')
 
@@ -72,23 +71,23 @@ def create_config():
     client_secret = ""
     download_path = ""
 
-    while not client_id: 
-        try: 
+    while not client_id:
+        try:
             client_id = str(input('Paste your client id: '))
-        except Exception as e: 
+        except Exception as e:
             log.debug("Error when getting client_id input", exc_info=True)
 
     while not client_secret:
-        try: 
+        try:
             client_secret = str(input('Paste your client secret: '))
-        except Exception as e: 
+        except Exception as e:
             log.debug("Error when getting client_secret input", exc_info=True)
 
-    while not download_path: 
-        try: 
+    while not download_path:
+        try:
             download_path = str(input('Paste your download path: '))
             download_path = expanduser(download_path)
-        except Exception as e: 
+        except Exception as e:
             log.debug("Error when getting download_path input", exc_info=True)
 
     return {'client_id' : client_id,

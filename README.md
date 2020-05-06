@@ -60,21 +60,27 @@ Or for simplicity, you can use:
 
     imgurtofolder [urls]
 
-***Change folder path to download***
+***Temporary change folder path to download***
 
-    imgurtofolder --folder FOLDER-PATH-HERE | OR | imgurtofolder -f  FOLDER-PATH-HERE
+    imgurtofolder --folder FOLDER-PATH-HERE
+    | OR |
+    imgurtofolder -f  FOLDER-PATH-HERE
 
 ***Download all account images within your profile***
 
 *Please see below for authenticating setup.*
 
-    imgurtofolder --download-account-images | OR | imgurtofolder -dai
+    imgurtofolder --download-account-images
+    | OR |
+    imgurtofolder -dai
 
 ***List all favorited Imgur links within your profile***
 
 *Please see below for authenticating setup.*
 
-    imgurtofolder --list-all-favorites [username] | OR | imgurtofolder -lf [username]
+    imgurtofolder --list-all-favorites [username]
+    | OR |
+     imgurtofolder -lf [username]
 
 ***Download favorited Imgur links within your profile***
 
@@ -82,23 +88,27 @@ Or for simplicity, you can use:
 
 *Download all favorites in order of latest.*
 
-    imgurtofolder --download-latest-favorites [username] | OR | imgurtofolder -df [username]
-
-*Download all favorites in order of oldest.*
-
-    imgurtofolder --download-oldest-favorites [username] | OR | imgurtofolder -do [username]
+    imgurtofolder --download-favorites [username]
+    | OR |
+    imgurtofolder -df [username]
 
 *To limit number of favorites to download use `--max-favorites`:*
 
-    imgurtofolder --download-latest-favorites [username] --max-favorites [maximum_number_of_favorites]
+    imgurtofolder --download-favorites [username] --max-favorites [maximum_number_of_favorites]
 
-    [OR]
+*To sort by time or top of all use `--sort`*
 
-    imgurtofolder --download-oldest-favorites [username] --max-favorites [maximum_number_of_favorites]
+    imgurtofolder --download-favorites [username] --sort time
+    | OR |
+    imgurtofolder --download-favorites [username] --sort top
 
-*Example for latest 60 favorites*
+*When sorting by time select `--window`*
 
-    imgurtofolder --download-latest-favorites [username] --max-favorites 60
+    imgurtofolder --download-favorites --window {day,week,month,year,all}
+
+*To print download path use `--print-download-path`*
+
+    imgurtofolder --print-download-path  
 
 ***Over-write existing files (disables skipping)***
 
@@ -111,6 +121,12 @@ Or for simplicity, you can use:
 *To enable debugging output use `--verbose`*
 
     imgurtofolder [URLS] --verbose
+
+### Running first time Setup
+
+There is now a first time setup sequence that happens when a config file is not found in, by default, "~/.config/imgurToFolder/config.json". This config location can be changed in "\_\_main\_\_.py". Once the a user has finished setup a config file will be generated in the selected path. 
+
+
 
 ### Authentication Setup For Account Access (Only needed to download favorites)
 
