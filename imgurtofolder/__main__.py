@@ -9,10 +9,7 @@ from os.path import expanduser, exists, join
 from sys import platform
 from traceback import print_exc
 
-CONFIG_FOLDER_PATH = expanduser('~/.config/imgurToFolder')
-CONFIG_FILE_NAME = 'config.json'
-
-CONFIG_PATH = join(CONFIG_FOLDER_PATH, CONFIG_FILE_NAME)
+CONFIG_PATH = join( expanduser('~'), ".config", "imgurToFolder", 'config.json')
 
 log = logs.Log('main')
 
