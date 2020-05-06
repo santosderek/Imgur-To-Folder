@@ -14,7 +14,7 @@ class Configuration:
         self._access_token  = access_token
         self._client_id     = client_id
         self._client_secret = client_secret
-        self._download_path = download_path
+        self._download_path = os.path.realpath(os.path.expanduser(download_path))
         self._refresh_token = refresh_token
         self._overwrite     = overwrite
         log.debug('Configuration set')
@@ -36,11 +36,11 @@ class Configuration:
 
     def set_download_path(self, path):
         log.debug('Setting download_path')
-        self._download_path = path
+        self._download_path = os.path.realpath(os.path.expanduser(path))
 
     def set_default_download_path(self, path):
         log.debug('Setting download_path')
-        self._download_path = path
+        self._download_path = os.path.realpath(os.path.expanduser(path))
         self.save_configuration(True)
 
     def set_refresh_token(self, token):
