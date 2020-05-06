@@ -16,29 +16,39 @@ Download Imgur albums and images to desired folder with one command.
 
 *Copy repository from github:*
 
-
     git clone https://github.com/santosderek/Imgur-To-Folder
     cd Imgur-To-Folder
-
-*Create an Imgur account at http://imgur.com/ or log in if you have one already.*
-
-*Next go to https://api.imgur.com/oauth2/addclient and create a new application using a name of your choice, and the authorization type of:*
-
-* OAuth 2 Authorization without a callback URL
-
-*Complete the rest of the form.*
-
-*Within * `imgurtofolder/config.json` add in your CLIENT_ID and CLIENT_SECRET found on your http://imgur.com/account/settings/apps page.*
 
 *Next within the command-line type: (and within the Imgur-To-Folder folder)*
 
     python3 setup.py install
 
-*Congrats! It's installed. Now you can proceed bellow*
+*Start inital setup by typing `itf` or `imgurtofolder` in the commandline
+
+    itf
+
+*You should be prompted for a client_id. Ignore this for now, but don't leave setup.*
+
+*Next, create an Imgur account at http://imgur.com/ or log in if you have one already.*
+
+*Now go to https://api.imgur.com/oauth2/addclient and create a new application using a name of your choice, and the authorization type of:*
+
+* OAuth 2 Authorization without a callback URL
+
+*Complete the rest of the form.*
+
+*Back in the terminal paste your client_id and press enter.*
+
+*Now you should be prompted for a client_secret; paste your client_secret given by imgur and press enter.*
+
+*Lastly, you should be prompted for a download path; Give any download path for ITF to download to.*
+
+*Congrats! It's installed. Now you can run the `itf` or `imgurtofolder` to start downloading! See below for more arguments, or use `itf -h`.*
 
 ***
 
 ### How to use:
+
 Base command:
 
     imgurtofolder
@@ -48,6 +58,10 @@ Or for simplicity, you can use:
     itf
 
 *All commands below can be used with either base command.*
+
+#### Inital setup
+
+By running `itf` or `imgurtofolder` without a config file in the location specified in `__main__.py`, imgur to folder will prompt for a cliend_id, cliend_secret, and download path.
 
 #### Following commands can be used:
 ***Help page***
@@ -124,15 +138,13 @@ Or for simplicity, you can use:
 
 ### Running first time Setup
 
-There is now a first time setup sequence that happens when a config file is not found in, by default, "~/.config/imgurToFolder/config.json". This config location can be changed in "\_\_main\_\_.py". Once the a user has finished setup a config file will be generated in the selected path. 
-
-
+There is now a first time setup sequence that happens when a config file is not found in, by default, "~/.config/imgurToFolder/config.json". This config location can be changed in "\_\_main\_\_.py". Once the a user has finished setup a config file will be generated in the selected path.
 
 ### Authentication Setup For Account Access (Only needed to download favorites)
 
 To access your favorites, you must first permit this application to access your account. Again, this application does not store user name or passwords. This is the purpose of OAuth.
 
-In order to do so, run either the `imgurtofolder --list-all-favorites [username]` command, the `imgurtofolder --download-latest-favorites [username]` command, or the `imgurtofolder --download-oldest-favorites [username]` command with your username replacing `[username]`.
+In order to do so, run either the `imgurtofolder --list-all-favorites [username]` command, or the `imgurtofolder --download-favorites [username]` command with your username replacing `[username]`.
 
 A message will appear asking the user to visit a specified url and log in. This page takes you to Imgur to authenticate Imgur-To-Folder, and allow the program to view your favorites.
 
@@ -151,17 +163,6 @@ This step will no longer be needed for future favorites / account downloads afte
 "The Imgur API uses a credit allocation system to ensure fair distribution of capacity. Each application can allow approximately 1,250 uploads per day or approximately 12,500 requests per day. If the daily limit is hit five times in a month, then the app will be blocked for the rest of the month."
 
 \- [Imgur Offical Documentation](https://apidocs.imgur.com/)
-
-### Changes
-
-- Now currently using Imgur's RESTful API.
-- Works with any form of Imgur link.
-- Can now handle subreddit links.
-- Takes less queries to get all images within album.
-- Code is more relative, and not as absolute.
-- No longer need to specify type.
-- No longer using deprecated ImgurPython.
-- No longer supports single images folder.
 
 ### Clarification
 
