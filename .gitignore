@@ -1,6 +1,6 @@
 build
 dist
 ImgurToFolder.egg-info
-ImgurToFolder/__pycache__/config.cpython-36.pyc
+ImgurToFolder/__pycache__/
 __pycache__
 config.json
