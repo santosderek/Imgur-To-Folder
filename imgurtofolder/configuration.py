@@ -1,5 +1,4 @@
 from .logs import Log
-from os import mkdir
 import json
 import os.path
 

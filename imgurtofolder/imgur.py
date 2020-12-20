@@ -1,7 +1,6 @@
 from .logs import Log
+from .flask import create_application
 from pprint import pformat
-from time import sleep
-import os
 import re
 import requests
 import webbrowser
@@ -22,21 +21,33 @@ class Imgur:
 
     def authorize(self):
         """Prompt user to authenticate their application with Imgur"""
-        url = "https://api.imgur.com/oauth2/authorize?response_type=token&client_id={client_id}".format(
+        url = "https://api.imgur.com/oauth2/authorize?client_id={client_id}&response_type=token&state=authenticated"
+        url = url.format(
             client_id=self._configuration.get_client_id()
         )
+
+        warning_banner = """
+        This gives ImgurToFolder permission to view account information.
+        ImgurToFolder does NOT collect any passwords or personal info!
+        Everything is done though OAuth 2 APIs. All ITF code is open source in repo.
+        """
 
         # Have user authorize their own app
         webbrowser.open_new(url)
         self._log.info("If a webpage did not load please go to: %s" % url)
-        self._log.info(
-            "This gives ImgurToFolder permission to view account information.")
-        self._log.info(
-            "ImgurToFolder does NOT collect any passwords or personal info!")
+        self._log.info(warning_banner)
+        
 
         # Have user paste their own repsonse url
         self._log.info("---")
         self._log.info("After you loged in, you'll see the Imgur homepage.")
+        self._log.info("Login to the application to authenticate.")
+        # self._log.info("CTRL + C to stop flask server.")
+
+
+        # flask_app = create_application() 
+        # flask_app.run(host="127.0.0.1", port="8080") 
+
         user_input = str(input("Paste the redirected url here: "))
 
         # Save access_token and refresh_token to users config
@@ -80,7 +91,8 @@ class Imgur:
             headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
@@ -97,13 +109,15 @@ class Imgur:
             headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
     def get_account_favorites(self, username, sort='newest', page=0, max_items=80):
         """Returns a list of account favorites up to the max_items"""
         total_images = []
+
         while len(total_images) < max_items:
             url = f"https://api.imgur.com/3/account/{username}/favorites/{page}/{sort}"
             headers = {
@@ -114,8 +128,13 @@ class Imgur:
                 url,
                 headers=headers).json()
 
-            if response['success'] is False:
-                break
+            if 'errors' in response and response['errors'][0]['status'] == 'Unauthorized':
+                raise UnauthorizedError(
+                    "You have not authorized the application.")
+
+            if 'success' in response and response['success'] is False:
+                raise ImgurResponseNotSuccess(
+                    "Imgur Response: Error: {}".format(response['data']['error']))
 
             for image in response['data']:
                 if 'data' in response and len(total_images) < max_items:
@@ -132,7 +151,8 @@ class Imgur:
         response = requests.request('GET', url, headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
@@ -145,7 +165,8 @@ class Imgur:
         response = requests.request('GET', url, headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
@@ -158,7 +179,8 @@ class Imgur:
         response = requests.request('GET', url, headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
@@ -171,7 +193,8 @@ class Imgur:
         response = requests.request('GET', url, headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
@@ -184,7 +207,8 @@ class Imgur:
         response = requests.request('GET', url, headers=headers).json()
 
         if response['success'] is False:
-            raise ImgurResponseNotSuccess("Imgur Returned 'success': False")
+            raise ImgurResponseNotSuccess(
+                "Imgur Response: Error: {}".format(response['data']['error']))
 
         return response['data']
 
@@ -217,6 +241,10 @@ class Image():
 class Album():
     def __init__(self, dictionary):
         self.__dict__.update(dictionary)
+
+
+class UnauthorizedError(Exception):
+    pass
 
 
 class ImgurResponseNotSuccess(Exception):
