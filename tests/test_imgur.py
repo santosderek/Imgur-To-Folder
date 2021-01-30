@@ -49,6 +49,9 @@ def test_authorize(imgur):
         assert data['access_token']
         assert data['refresh_token']
 
+@pytest.mark.skip("Not implemented and there might be a limit to how many access_tokens we can get")
+def test_generate_access_token(imgur): 
+    pass 
 
 def test_get_account_images(imgur):
     """Test retrival of account images."""
@@ -75,6 +78,22 @@ def test_get_account_favorites(imgur):
     account_gallery_favorites = imgur.get_account_favorites("me",
                                                             sort="oldest")
     assert len(account_gallery_favorites) > 1
+
+
+def test_get_account_submissions(imgur):
+    assert False
+
+def test_get_album(imgur):
+    assert False
+    
+def test_get_gallery_album(imgur):
+    assert False
+
+def test_get_subreddit_gallery(imgur):
+    assert False
+
+def test_get_subreddit_image(imgur):
+    assert False
 
 
 def test_get_tag(imgur):
