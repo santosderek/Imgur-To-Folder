@@ -1,5 +1,4 @@
 from .logs import Log
-from .flask import create_application
 from pprint import pformat
 import re
 import requests
@@ -36,23 +35,21 @@ class Imgur:
         webbrowser.open_new(url)
         self._log.info("If a webpage did not load please go to: %s" % url)
         self._log.info(warning_banner)
-        
 
-        # Have user paste their own repsonse url
-        self._log.info("---")
-        self._log.info("After you loged in, you'll see the Imgur homepage.")
-        self._log.info("Login to the application to authenticate.")
-        # self._log.info("CTRL + C to stop flask server.")
-
-
-        # flask_app = create_application() 
-        # flask_app.run(host="127.0.0.1", port="8080") 
-
-        user_input = str(input("Paste the redirected url here: "))
+        user_input = str(input("Paste the redirected url here after signing in: "))
 
         # Save access_token and refresh_token to users config
         access_token = re.search(r'access_token=(\w+)', user_input).group(1)
         refresh_token = re.search(r'refresh_token=(\w+)', user_input).group(1)
+
+        if access_token == -1: 
+            self._log.error("Can not parse access token!")
+            return
+        
+        if refresh_token == -1: 
+            self._log.error("Can not parse refresh token!")
+            return
+        
         self._configuration.set_access_token(access_token)
         self._configuration.set_refresh_token(refresh_token)
         self._configuration.save_configuration()

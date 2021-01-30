@@ -21,6 +21,6 @@ setup(name='ImgurToFolder',
       package_data={},
       install_requires=[
           'requests',
-          pytest
+          'pytest'
       ]
       )
