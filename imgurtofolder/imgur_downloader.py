@@ -8,6 +8,7 @@ import os
 import re
 import requests
 import shutil
+from urllib.parse import urlparse
 
 log = logs.Log('downloader')
 
@@ -71,8 +72,8 @@ class Imgur_Downloader(Imgur):
                     self.download_tag(result, page=page, max_items=max_items)
 
         else:
-            log.info('Downloading image: %s' % url[url.rfind('/') + 1:])
-            self.download(url[url.rfind('/') + 1:], url, self.get_download_path())
+            log.info('Downloading image: %s' % os.path.basename(urlparse(url).path))
+            self.download(os.path.basename(urlparse(url).path), url, self.get_download_path())
 
     def get_image_link(self, image):
         if 'mp4' in image:
