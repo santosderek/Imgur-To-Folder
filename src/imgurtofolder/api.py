@@ -1,16 +1,16 @@
-import re
 import webbrowser
+import re
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
-import logs
 import requests
 from requests.exceptions import HTTPError
 
 from imgurtofolder.configuration import Configuration
+from logging import getLogger
 
-log = logs.Log('imgur')
+logger = getLogger(__name__)
 
 
 class OAuth:
@@ -19,52 +19,54 @@ class OAuth:
         self._configuration = configuration
 
     def authorize(self):
-        url = 'https://api.imgur.com/oauth2/authorize?'
-        url += 'response_type=token'
-        url += '&client_id=%s' % self._configuration.get_client_id()
+        url = (
+            'https://api.imgur.com/oauth2/authorize?'
+            'response_type=token'
+            f'&client_id={self._configuration.client_id}'
+        )
 
         # Have user authorize their own app
         webbrowser.open_new(url)
-        log.info("If a webpage did not load please go to: %s" % url)
-        log.info("This gives ImgurToFolder permission to view account information.")
-        log.info("ImgurToFolder does NOT collect any passwords or personal info!")
+        logger.info("If a webpage did not load please go to: %s" % url)
+        logger.info("This gives ImgurToFolder permission to view account information.")
+        logger.info("ImgurToFolder does NOT collect any passwords or personal info!")
 
         # Have user paste their own repsonse url
-        log.info("---")
-        log.info("After you loged in, you'll see the Imgur homepage.")
+        logger.info("---")
+        logger.info("After you loged in, you'll see the Imgur homepage.")
         user_input = str(input("Paste the redirected url here: "))
 
         # Save access_token and refresh_token to users config
         access_token = re.search('access_token=(\w+)', user_input).group(1)
         refresh_token = re.search('refresh_token=(\w+)', user_input).group(1)
-        self._configuration.set_access_token(access_token)
-        self._configuration.set_refresh_token(refresh_token)
+        self._configuration.access_token = access_token
+        self._configuration.refresh_token = refresh_token
         self._configuration.save_configuration()
-        log.debug('Configuration saved')
-        log.info('The application is now authorized')
+        logger.debug('Configuration saved')
+        logger.info('The application is now authorized')
 
     def generate_access_token(self):
         url = 'https://api.imgur.com/oauth2/token'
-        data = {
-            'refresh_token': self._configuration.refresh_token,
-            'client_id': self._configuration.client_id,
-            'client_secret': self._configuration.client_secret,
-            'grant_type': 'refresh_token'
-        }
+
         response = requests.request('POST',
                                     url,
                                     headers=headers,
-                                    data=data,
+                                    data={
+                                        'refresh_token': self._configuration.refresh_token,
+                                        'client_id': self._configuration.client_id,
+                                        'client_secret': self._configuration.client_secret,
+                                        'grant_type': 'refresh_token'
+                                    },
                                     allow_redirects=False)
         response_json = response.json()
 
         # TODO: Make sure this works
-        self._configuration.set_access_token(response_json['access_token'])
+        self._configuration.access_token = response_json['access_token']
 
 
 def _raise_exception_given_response(response: requests.Response):
     message = f'Request returned incorrect response: {response.status_code} - {response}'
-    log.error(message)
+    logger.error(message)
     raise HTTPError(message)
 
 
@@ -82,16 +84,22 @@ class ImgurAPI:
 
     def __new__(cls, *args, **kwargs):
         if not cls._singleton_instance:
-            cls._singleton_instance = super(ImgurAPI, cls).__new__(cls, *args, **kwargs)
+            cls._singleton_instance = super().__new__(cls)
         return cls._singleton_instance
-
 
     def __init__(self, configuration: Configuration):
         self._configuration = configuration
         self._oauth = OAuth(configuration)
         self.base_url = urljoin(self.BASE_URL, self.API_PREFIX)
 
-    def _make_request(self, method: str, url: str, headers: Optional[Dict[str, str]] = None, return_raw_response: bool = True, **kwargs):
+    def _make_request(
+            self,
+            method: str,
+            url: str,
+            headers: Optional[Dict[str, str]] = None,
+            return_raw_response: bool = False,
+            **kwargs
+    ):
         """
         Make a request to the Imgur API
 
@@ -139,7 +147,7 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        self._make_request('GET', url, headers=headers, data=data, **kwargs)
+        return self._make_request('GET', url, headers=headers, **kwargs)
 
     def post(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
         """
@@ -153,7 +161,7 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        self._make_request('POST', url, headers=headers, data=data, **kwargs)
+        return self._make_request('POST', url, headers=headers, **kwargs)
 
     def delete(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
         """
@@ -167,7 +175,7 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        self._make_request('DELETE', url, headers=headers, data=data, **kwargs)
+        return self._make_request('DELETE', url, headers=headers, **kwargs)
 
     def put(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
         """
@@ -181,4 +189,4 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        self._make_request('PUT', url, headers=headers, data=data, **kwargs)
+        return self._make_request('PUT', url, headers=headers, **kwargs)

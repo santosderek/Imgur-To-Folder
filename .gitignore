@@ -4,3 +4,5 @@ ImgurToFolder.egg-info
 ImgurToFolder/__pycache__/
 __pycache__
 config.json
+venv
+image_test.py

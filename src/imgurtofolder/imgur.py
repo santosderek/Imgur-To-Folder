@@ -1,26 +1,12 @@
-import os
-import re
-import webbrowser
-from copy import deepcopy
-from dataclasses import dataclass
-from pprint import pformat
-from time import sleep
-from typing import Any, Dict, List, Optional, Union
-from urllib.parse import urljoin
+from imgurtofolder.api import ImgurAPI
+from logging import getLogger
 
-import requests
-from requests.exceptions import HTTPError
-
-from imgurtofolder.api import ImgurAPI, Oauth
-from imgurtofolder.configuration import Configuration
-from imgurtofolder.logs import Log
-
-log = Log('imgur')
+logger = getLogger('imgur')
 
 
 class Imgur:
     def __init__(self, configuration):
-        log.debug('Configuration set')
+        logger.debug('Configuration set')
         self._configuration = configuration
         self._api = ImgurAPI(configuration)
 
@@ -46,7 +32,7 @@ class Imgur:
         account_images = []
 
         while len(response := _next_page(username, page)) != 0:
-            log.info(f'Getting page {page} of account images')
+            logger.info(f'Getting page {page} of account images')
             for item in response:
                 account_images.append(item)
             response = _next_page(username, page)
@@ -99,7 +85,7 @@ class Imgur:
             if (max_items >= 0) and (len(favorites) > max_items):
                 return favorites[:max_items]
 
-            log.info(f'Getting page {page} of favorites')
+            logger.info(f'Getting page {page} of favorites')
             for item in response:
                 favorites.append(item)
             page += 1

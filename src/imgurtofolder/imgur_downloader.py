@@ -1,26 +1,18 @@
-# Derek Santos
-import json
 import os
-import re
-import shutil
 from os.path import basename
-from pprint import pformat
-from time import sleep
+import re
 from urllib.parse import urlparse
 
-import logs
-import requests
-from imgur import Imgur
-
 from imgurtofolder.objects import Album, Gallery, Image, Subreddit
+from logging import getLogger
 
-log = logs.Log('downloader')
+logger = getLogger(__name__)
 
 
 def mkdir(path):
-    log.debug("Checking if folder exists")
+    logger.debug("Checking if folder exists")
     if not os.path.exists(path):
-        log.debug("Creating folder: %s" % path)
+        logger.debug("Creating folder: %s" % path)
         os.makedirs(path)
 
 
@@ -38,8 +30,30 @@ def replace_characters(word):
 
 class Imgur_Downloader:
 
+    IMGUR_BASE_EXTENSIONS = {
+        'album': [r'(/a/)(\w+)'],
+        'gallery': [r'(/g/)(\w+)', r'(/gallery/)(\w+)'],
+        'subreddit': [r'(/r/)(\w+)\/(\w+)', r'(/r/)(\w+)$'],
+        'tag': [r'(/t/)(\w+)']
+    }
+
     def __init__(self, configuration):
         self._configuration = configuration
+
+    def download_album(self, url) -> Album:
+        """
+        Downloads an album
+
+        Parameters:
+            url (str): The url to download
+        """
+        for item in self.IMGUR_BASE_EXTENSIONS['album']:
+            result = re.search(item, url).group(2) \
+                if re.search(item, url) else None
+            if not result:
+                ValueError("Could not parse album ID from URL")
+            return Album(url).download(result)
+
 
     def parse_id(self, url, page=0, sort='time', window='day'):
         """
@@ -52,19 +66,9 @@ class Imgur_Downloader:
             sort (str): The sort type
             window (str): The window type
         """
-        imgur_base_extensions = {
-            'album': [r'(/a/)(\w+)'],
-            'gallery': [r'(/g/)(\w+)', r'(/gallery/)(\w+)'],
-            'subreddit': [r'(/r/)(\w+)\/(\w+)', r'(/r/)(\w+)$'],
-            'tag': [r'(/t/)(\w+)']
-        }
 
         if any(re.search(item, url) for item in imgur_base_extensions['album']):
-            for item in imgur_base_extensions['album']:
-                result = re.search(item, url).group(
-                    2) if re.search(item, url) else None
-                if result:
-                    Album(url).download(result)
+            self.download_album(url)
 
         elif any(re.search(item, url) for item in imgur_base_extensions['gallery']):
             for item in imgur_base_extensions['gallery']:
@@ -106,7 +110,7 @@ class Imgur_Downloader:
                     )
 
         else:
-            log.info(f'Downloading image: {basename(urlparse(url).path)}')
+            logger.info(f'Downloading image: {basename(urlparse(url).path)}')
             Image(url, basename(urlparse(url).path)).download(
                 self.get_download_path()
             )

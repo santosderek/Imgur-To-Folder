@@ -1,39 +1,43 @@
-import os
-import re
-import webbrowser
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from os.path import exists, join
+import os
 from pathlib import Path
 from pprint import pformat
 from time import sleep
-from typing import Any, Dict, List, Optional, Union
+from typing import List
 
-import logs
 import requests
 
 from imgurtofolder.imgur import ImgurAPI
 
-log = logs.Log('objects')
+from logging import getLogger
+
+from pprint import pformat
+from os.path import exists
+import shutil
+
+import asyncio
+
+logger = getLogger(__name__)
 
 
-@dataclass
 class Downloadable(ABC):
     """
     Abstract class which holds all the common methods for downloading images and albums.
     """
-    url: str
-    title: str
+
+    def __init__(self, url: str, api: ImgurAPI):
+        self.url = url
+        self.api = api
 
     @abstractmethod
-    def get_metadata(self, **kwargs):
+    def get_metadata(self, **kwargs) -> 'Downloadable':
         """
         Gets the metadata for the object using the API.
         """
         ...
 
     @abstractmethod
-    def download(self, overwrite: bool = False, **kwargs):
+    def download(self, overwrite: bool = False, **kwargs) -> 'Downloadable':
         """
         Downloads the multi-media blob.
         """
@@ -45,7 +49,23 @@ class Image(Downloadable):
     Class which holds all the methods for downloading images.
     """
 
-    api: ImgurAPI
+    def get_metadata(self, **kwargs) -> dict:
+        """
+        Gets the metadata for the image using the API.
+
+        Returns:
+            dict: The metadata for the image
+        """
+        # https://i.imgur.com/mtBciws.jpeg
+        # https://imgur.com/mtBciws
+
+        imageHash = "mtBciws"
+        return self.api.get(
+            url=f"image/{imageHash}",
+            headers={
+                "Authorization": f"Client-ID {self.api._configuration.client_id}",
+            }
+        ).get('data')
 
     def _get_image_link(self, image):
         """
@@ -70,24 +90,31 @@ class Image(Downloadable):
         else:
             raise ValueError('Unknown filetype')
 
-    def download(self, path, overwrite: bool = False, **kwargs):
+    async def download(self, path, overwrite: bool = False):
         """
         Downloads a file from a url to a path
 
         Parameters:
-            filename (str): The name of the file to be downloaded
-            url (str): The url of the file to be downloaded
             path (str): The path to download the file to
+            overwrite (bool): If True, overwrite existing files
+            kwargs: Additional arguments
+
+        Raises:
+            ValueError: If the response code is not 200
         """
 
-        filename = self.title + self._get_image_link(self.get_metadata())[1]
+        metadata = self.get_metadata()
 
-        if not exists(path):
-            log.debug('Creating folder path for image {join(path, "/",  filename)}')
+        filename = f"{(metadata.get('title') or metadata.get('id'))}{Path(metadata.get('link')).suffix}"
+
+        _path = Path(path)
+
+        if not _path.exists():
+            logger.debug(f'Creating folder path for image {_path / filename}')
             os.makedirs(path)
 
-        if not overwrite and exists(join(path, filename)):
-            log.info(f'\tSkipping {filename} because it already exists')
+        if not overwrite and (_path / filename).exists():
+            logger.info(f'\tSkipping {filename} because it already exists')
             return
 
         response: requests.Response = self.api.get(
@@ -95,54 +122,66 @@ class Image(Downloadable):
             return_raw_response=True,
             stream=True
         )
-        if not response.status_code == 200:
-            log.info(f'\tERROR! Can not download: {join(path, filename)}')
-            log.info(f'\tStatus code: {response.status_code}')
 
-        file_size = int(response.headers.get(
-            'content-length', 0)) / float(1 << 20)
-        log.info('\t%s, File Size: %.2f MB' % (filename, file_size))
-        with open(join(path, filename), 'wb') as image_file:
+        if response.status_code != 200:
+            logger.error('Error downloading image: %s' % pformat(response.json()))
+            raise ValueError(f'Error downloading image: {self.url}')
+
+        file_size = \
+            int(response.headers.get('content-length', 0)) / float(1 << 20)
+
+        logger.info('\t%s, File Size: %.2f MB' % (filename, file_size))
+        
+        # Place a sleep here to prevent rate limiting
+        await asyncio.sleep(.1)
+
+        with (_path / filename).open('wb') as image_file:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, image_file)
 
-        # TODO: Replace this old way of sleeping to avoid rate limit to use a calculated wait based on the rate limit
-        sleep(.1)
 
 
 class Album(Downloadable):
     """
     Class which holds all the methods for downloading albums.
     """
-    images: List[Image]
+
+    def __init__(self, url: str, api: ImgurAPI, title: str):
+
+        self.url = url
+        self.api = api
+        self.title = title
+        self.images: List[Image] = []
 
     def get_metadata(self, album_hash):
-        url = f'album/{album_hash}'
-        headers = {
-            'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
-        }
-        return self._api.get(url, headers=headers)
+        return self._api.get(
+            f'album/{album_hash}',
+            headers={
+                'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
+            }
+        )
 
     def download(self, id):
 
-        log.debug('Getting album details')
+        logger.debug('Getting album details')
         album = self.get_album(id)['data']
         title = album['title'] if album['title'] else album['id']
         title = self.replace_characters(title)
         path = os.path.join(self.get_download_path(), title)
 
-        log.debug("Checking if folder exists")
+        logger.debug("Checking if folder exists")
         if not os.path.exists(path):
-            log.debug("Creating folder: %s" % path)
+            logger.debug("Creating folder: %s" % path)
             os.makedirs(path)
 
-        log.info('Downloading album: %s' % title)
+        logger.info('Downloading album: %s' % title)
         for position, image in enumerate(album['images'], start=1):
             image_link, filetype = self.get_image_link(image)
             image_filename = "{} - {}{}".format(
                 album['id'], position, filetype)
 
-            Image().download(image_filename, image_link, path)
+        _iamge = Image()
+        _image.download(image_filename, image_link, path)
 
 
 class Gallery(Album):
@@ -159,19 +198,19 @@ class Gallery(Album):
 
     def download(self, id):
 
-        log.debug('Getting Gallery details')
+        logger.debug('Getting Gallery details')
         album = self.get_gallery_album(id)['data']
         title = album['title'] if album['title'] else album['id']
         title = self.replace_characters(title)
         path = os.path.join(self.get_download_path(), title)
 
-        log.debug("Checking if folder exists")
+        logger.debug("Checking if folder exists")
         if not os.path.exists(path):
-            log.debug("Creating folder: %s" % path)
+            logger.debug("Creating folder: %s" % path)
             os.makedirs(path)
 
         if 'images' in album:
-            log.info('Downloading gallery %s' % album['id'])
+            logger.info('Downloading gallery %s' % album['id'])
             for position, image in enumerate(album['images'], start=1):
                 image_link, filetype = self.get_image_link(image)
                 filename = album['id'] + ' - ' + str(position) + filetype
@@ -180,16 +219,16 @@ class Gallery(Album):
         else:
             image_link, filetype = self.get_image_link(album)
             filename = image_link[image_link.rfind('/') + 1:]
-            log.info('Downloading gallery image: %s' % filename)
+            logger.info('Downloading gallery image: %s' % filename)
             Image().download(filename, image_link, path)
 
     def download_favorites(self, username, latest=True, page=0, max_items=None):
-        log.info("Getting account favorites")
+        logger.info("Getting account favorites")
         favorites = self.get_account_favorites(username=username,
                                                sort='oldest' if not latest else 'newest',
                                                page=page,
                                                max_items=max_items)
-        log.debug('Number of favorites: %d' % len(favorites))
+        logger.debug('Number of favorites: %d' % len(favorites))
         for favorite in favorites:
             self.parse_id(favorite['link'])
 
@@ -198,7 +237,7 @@ class Gallery(Album):
                                                sort='oldest' if not latest else 'newest',
                                                page=page,
                                                max_items=max_items)
-        log.info(pformat(favorites))
+        logger.info(pformat(favorites))
 
 
 class Tag(Downloadable):
@@ -208,7 +247,7 @@ class Tag(Downloadable):
 
     def download(self, id, page=0, max_items=30):
 
-        log.debug('Getting tag details')
+        logger.debug('Getting tag details')
         items = self.get_tag(id, page=page, max_items=max_items)
 
         # For each item in tag. Items are "albums"
@@ -228,7 +267,7 @@ class Tag(Downloadable):
 
                     self.mkdir(path)
 
-                    log.info('Downloading tag: %s' % title)
+                    logger.info('Downloading tag: %s' % title)
                     image_link, filetype = self.get_image_link(sub_image)
                     image_filename = "{} - {}{}".format(
                         sub_image['id'], position, filetype)
@@ -241,7 +280,7 @@ class Tag(Downloadable):
 
                 self.mkdir(path)
 
-                log.info('Downloading tag: %s' % title)
+                logger.info('Downloading tag: %s' % title)
                 image_link, filetype = self.get_image_link(sub_image)
                 image_filename = "{} - {}{}".format(
                     sub_image['id'], position, filetype)
@@ -261,7 +300,7 @@ class Tag(Downloadable):
                 items.append(item)
 
             url = f'gallery/t/{tag}/{sort}/{window}/{page}'
-            log.debug('Url to download: %s' % url)
+            logger.debug('Url to download: %s' % url)
             response = self._api.get(url, headers)
             page += 1
         return items[:max_items + 1]
@@ -288,24 +327,24 @@ class Subreddit(Downloadable):
 
     def download_from_subreddit(self, subreddit, id):
 
-        log.debug('Getting subreddit gallery details')
+        logger.debug('Getting subreddit gallery details')
         subreddit_album = self.get_subreddit_image(subreddit, id)['data']
         title = subreddit_album['title'] if subreddit_album['title'] else subreddit_album['id']
         title = self.replace_characters(title)
         path = self.get_download_path()
 
-        log.debug("Checking if folder exists")
+        logger.debug("Checking if folder exists")
         if not os.path.exists(path):
-            log.debug("Creating folder: %s" % path)
+            logger.debug("Creating folder: %s" % path)
             os.makedirs(path)
 
-        log.info('Downloading subreddit gallery image: %s' % title)
+        logger.info('Downloading subreddit gallery image: %s' % title)
         image_link, filetype = self.get_image_link(subreddit_album)
         filename = image_link[image_link.rfind('/') + 1:]
         Image().download(filename, image_link, self.get_download_path())
 
     def download(self, subreddit, sort='time', window='day', page=0, max_items=30):
-        log.debug("Getting subreddit details")
+        logger.debug("Getting subreddit details")
         subreddit_data = []
         response = self.get_subreddit_gallery(
             subreddit, sort=sort, window=window, page=page)['data']  # TODO: use .get()
@@ -316,7 +355,7 @@ class Subreddit(Downloadable):
             response = self.get_subreddit_gallery(
                 subreddit, sort, window, page)['data']
 
-        log.debug("Sending subreddit items to parse_id")
+        logger.debug("Sending subreddit items to parse_id")
         for position, item in enumerate(subreddit_data):
             if position + 1 <= max_items:
                 self.parse_id(item["link"], page, max_items)

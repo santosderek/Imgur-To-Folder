@@ -1,10 +1,12 @@
 import json
-import logs
 from os import mkdir
 import os.path
+from os.path import expanduser, realpath
 from pathlib import Path
 
-log = logs.Log('configuration')
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 
 class Configuration:
@@ -13,19 +15,20 @@ class Configuration:
 
     def __new__(cls, *args, **kwargs):
         if not cls._singleton_instance:
-            cls._singleton_instance = super(Configuration, cls).__new__(cls, *args, **kwargs)
+            cls._singleton_instance = super(Configuration, cls).__new__(cls)
         return cls._singleton_instance
 
-    def __init__(self,
-                 config_path: str,
-                 access_token: str,
-                 client_id: str,
-                 client_secret: str,
-                 download_path: str,
-                 refresh_token: str,
-                 overwrite: bool = False,
-                 max_favorites: int = 30
-                 ):
+    def __init__(
+        self,
+        config_path: str,
+        access_token: str,
+        client_id: str,
+        client_secret: str,
+        refresh_token: str,
+        download_path: str = "~",
+        overwrite: bool = False,
+        max_favorites: int = 30
+    ):
         """
         Configuration class.
 
@@ -39,28 +42,15 @@ class Configuration:
             overwrite (bool): If True, overwrite existing files.
             max_favorites (int): The maximum number of favorites to download.
         """
-        self.config_path = config_path
+        self.config_path = realpath(expanduser(config_path))
         self.access_token = access_token
         self.client_id = client_id
         self.client_secret = client_secret
-        self.download_path = download_path
         self.refresh_token = refresh_token
         self.overwrite = overwrite
         self.max_favorites = max_favorites
 
-    def __post_init__(self):
-        self.download_path = os.path.realpath(os.path.expanduser(self.download_path))
-
-    def __setattr__(self, key, value):
-        """
-        Automatically save the config during a change.
-
-        Not thread safe.
-        """
-        if key == 'download_path':
-            value = os.path.realpath(os.path.expanduser(value))
-        super().__setattr__(key, value)
-        self.save_configuration()
+        self.download_path = realpath(expanduser(download_path))
 
     def convert_config_to_dict(self, overwrite_download_path=False):
         """
@@ -84,13 +74,13 @@ class Configuration:
         Parameters:
             overwrite_download_path (bool): If True, overwrite the download path with the current value.
         """
-        log.debug('Saving configuration')
+        logger.debug('Saving configuration')
         config_dict = self.convert_config_to_dict(overwrite_download_path)
 
         _path = Path(self.config_path)
 
         if not _path.parent.exists():
-            log.debug('Creating config directory')
+            logger.debug('Creating config directory')
             _path.parent.mkdir(parents=True, exist_ok=True)
 
         with _path.open('w') as current_file:
