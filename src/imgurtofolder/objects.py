@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+from typing import Optional
+from imgurtofolder.constants import IMGUR_BASE_EXTENSIONS
 import os
 from pathlib import Path
 from pprint import pformat
@@ -6,7 +8,7 @@ from time import sleep
 from typing import List
 
 import requests
-
+import re
 from imgurtofolder.imgur import ImgurAPI
 
 from logging import getLogger
@@ -20,13 +22,25 @@ import asyncio
 logger = getLogger(__name__)
 
 
+def replace_characters(word):
+    # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
+    invalid_characters = ['\\', "'", '/', ':',
+                          '*', '?', '"', '<',
+                          '>', '|', '.', '\n']
+
+    for character in invalid_characters:
+        word = word.replace(character, '')
+
+    return word.strip()
+
+
 class Downloadable(ABC):
     """
     Abstract class which holds all the common methods for downloading images and albums.
     """
 
-    def __init__(self, url: str, api: ImgurAPI):
-        self.url = url
+    def __init__(self, hash: str, api: ImgurAPI):
+        self.hash = hash
         self.api = api
 
     @abstractmethod
@@ -37,7 +51,7 @@ class Downloadable(ABC):
         ...
 
     @abstractmethod
-    def download(self, overwrite: bool = False, **kwargs) -> 'Downloadable':
+    async def download(self, overwrite: bool = False, **kwargs) -> 'Downloadable':
         """
         Downloads the multi-media blob.
         """
@@ -56,41 +70,14 @@ class Image(Downloadable):
         Returns:
             dict: The metadata for the image
         """
-        # https://i.imgur.com/mtBciws.jpeg
-        # https://imgur.com/mtBciws
-
-        imageHash = "mtBciws"
         return self.api.get(
-            url=f"image/{imageHash}",
+            url=f"image/{self.hash}",
             headers={
                 "Authorization": f"Client-ID {self.api._configuration.client_id}",
             }
         ).get('data')
 
-    def _get_image_link(self, image):
-        """
-        Gets the link to the image from the image metadata
-
-        Parameters:
-            image (dict): The image metadata
-
-        Returns:
-            tuple: The link to the image and the extension of the image
-        """
-
-        _filetypes = {
-            'mp4': '.mp4',
-            'gifv': '.gif',
-            'link': lambda item: Path(item['link']).suffix,
-        }
-
-        for filetype, extension in _filetypes.items():
-            if filetype in image:
-                return image[filetype], extension
-        else:
-            raise ValueError('Unknown filetype')
-
-    async def download(self, path, overwrite: bool = False):
+    async def download(self, path, overwrite: bool = False, enumeration: Optional[int] = None):
         """
         Downloads a file from a url to a path
 
@@ -105,40 +92,41 @@ class Image(Downloadable):
 
         metadata = self.get_metadata()
 
-        filename = f"{(metadata.get('title') or metadata.get('id'))}{Path(metadata.get('link')).suffix}"
+        _title = metadata.get('title') or metadata.get('id')
+        suffix = Path(metadata.get('link')).suffix
+        _filename = f"{_title}{(' - ' + str(enumeration)) if enumeration else ''}{suffix}"
+
+        _url = metadata.get('link')
 
         _path = Path(path)
 
         if not _path.exists():
-            logger.debug(f'Creating folder path for image {_path / filename}')
+            logger.debug(f'Creating folder path {_path}')
             os.makedirs(path)
 
-        if not overwrite and (_path / filename).exists():
-            logger.info(f'\tSkipping {filename} because it already exists')
+        _full_path = _path / _filename
+
+        if not overwrite and _full_path.exists():
+            logger.info(f'Skipping {_full_path} because it already exists')
             return
 
-        response: requests.Response = self.api.get(
-            self.url,
-            return_raw_response=True,
-            stream=True
-        )
+        response: requests.Response = self.api.get(_url, return_raw_response=True, stream=True)
 
         if response.status_code != 200:
             logger.error('Error downloading image: %s' % pformat(response.json()))
-            raise ValueError(f'Error downloading image: {self.url}')
+            raise ValueError(f'Error downloading image: {self.hash}')
 
         file_size = \
             int(response.headers.get('content-length', 0)) / float(1 << 20)
 
-        logger.info('\t%s, File Size: %.2f MB' % (filename, file_size))
-        
-        # Place a sleep here to prevent rate limiting
+        logger.info('\t%s, File Size: %.2f MB' % (_full_path, file_size))
+
+        # Placing a sleep here to prevent rate limiting
         await asyncio.sleep(.1)
 
-        with (_path / filename).open('wb') as image_file:
+        with _full_path.open('wb') as image_file:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, image_file)
-
 
 
 class Album(Downloadable):
@@ -146,42 +134,48 @@ class Album(Downloadable):
     Class which holds all the methods for downloading albums.
     """
 
-    def __init__(self, url: str, api: ImgurAPI, title: str):
+    def get_metadata(self, **kwargs) -> dict:
+        """
+        Gets the metadata for the image using the API.
 
-        self.url = url
-        self.api = api
-        self.title = title
-        self.images: List[Image] = []
+        Returns:
+            dict: The metadata for the image
+        """
+        # TODO: Regex could be better
+        # _hash = re.search(r"(https?)?(.*\.com\/)(\w+)(\..*)?$", self.url).group(3)
 
-    def get_metadata(self, album_hash):
-        return self._api.get(
-            f'album/{album_hash}',
+        return self.api.get(
+            url=f"album/{self.hash}",
             headers={
-                'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
+                "Authorization": f"Client-ID {self.api._configuration.client_id}",
             }
-        )
+        ).get('data')
 
-    def download(self, id):
+    async def download(self, path: str = None, overwrite: bool = False):
 
-        logger.debug('Getting album details')
-        album = self.get_album(id)['data']
-        title = album['title'] if album['title'] else album['id']
-        title = self.replace_characters(title)
-        path = os.path.join(self.get_download_path(), title)
+        metadata = self.get_metadata()
+
+        _title = replace_characters(metadata.get('title') or metadata.get('id'))
+        _path = Path(self.api._configuration.download_path) / _title
 
         logger.debug("Checking if folder exists")
-        if not os.path.exists(path):
-            logger.debug("Creating folder: %s" % path)
-            os.makedirs(path)
+        _path.mkdir(parents=True, exist_ok=True)
 
-        logger.info('Downloading album: %s' % title)
-        for position, image in enumerate(album['images'], start=1):
-            image_link, filetype = self.get_image_link(image)
-            image_filename = "{} - {}{}".format(
-                album['id'], position, filetype)
+        logger.info('Downloading album: %s' % _title)
 
-        _iamge = Image()
-        _image.download(image_filename, image_link, path)
+        _images = metadata.get('images') or []
+
+        for position, image in enumerate(_images, start=1):
+            await asyncio.create_task(
+                Image(
+                    hash=image.get('id'),
+                    api=self.api
+                ).download(
+                    path=_path,
+                    overwrite=overwrite,
+                    enumeration=position
+                )
+            )
 
 
 class Gallery(Album):

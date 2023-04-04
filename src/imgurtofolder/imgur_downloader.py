@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 from imgurtofolder.objects import Album, Gallery, Image, Subreddit
 from logging import getLogger
 
+from imgurtofolder.constants import IMGUR_BASE_EXTENSIONS
+
 logger = getLogger(__name__)
 
 
@@ -16,26 +18,10 @@ def mkdir(path):
         os.makedirs(path)
 
 
-def replace_characters(word):
-    # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
-    invalid_characters = ['\\', "'", '/', ':',
-                          '*', '?', '"', '<',
-                          '>', '|', '.', '\n']
-
-    for character in invalid_characters:
-        word = word.replace(character, '')
-
-    return word.strip()
 
 
 class Imgur_Downloader:
 
-    IMGUR_BASE_EXTENSIONS = {
-        'album': [r'(/a/)(\w+)'],
-        'gallery': [r'(/g/)(\w+)', r'(/gallery/)(\w+)'],
-        'subreddit': [r'(/r/)(\w+)\/(\w+)', r'(/r/)(\w+)$'],
-        'tag': [r'(/t/)(\w+)']
-    }
 
     def __init__(self, configuration):
         self._configuration = configuration
@@ -47,7 +33,7 @@ class Imgur_Downloader:
         Parameters:
             url (str): The url to download
         """
-        for item in self.IMGUR_BASE_EXTENSIONS['album']:
+        for item in IMGUR_BASE_EXTENSIONS['album']:
             result = re.search(item, url).group(2) \
                 if re.search(item, url) else None
             if not result:
@@ -67,18 +53,18 @@ class Imgur_Downloader:
             window (str): The window type
         """
 
-        if any(re.search(item, url) for item in imgur_base_extensions['album']):
+        if any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['album']):
             self.download_album(url)
 
-        elif any(re.search(item, url) for item in imgur_base_extensions['gallery']):
-            for item in imgur_base_extensions['gallery']:
+        elif any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['gallery']):
+            for item in IMGUR_BASE_EXTENSIONS['gallery']:
                 result = re.search(item, url).group(
                     2) if re.search(item, url) else None
                 if result:
                     Gallery(url,).download(result)
 
-        elif any(re.search(item, url) for item in imgur_base_extensions['subreddit']):
-            for item in imgur_base_extensions['subreddit']:
+        elif any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['subreddit']):
+            for item in IMGUR_BASE_EXTENSIONS['subreddit']:
                 if re.search(item, url) is None:
                     continue
 
@@ -98,8 +84,8 @@ class Imgur_Downloader:
                 elif subreddit is not None and id is not None:
                     Subreddit(url).download_subreddit_gallery(subreddit, id)
 
-        elif any(re.search(item, url) for item in imgur_base_extensions['tag']):
-            for item in imgur_base_extensions['tag']:
+        elif any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['tag']):
+            for item in IMGUR_BASE_EXTENSIONS['tag']:
                 result = re.search(item, url).group(
                     2) if re.search(item, url) else None
                 if result:
