@@ -60,6 +60,12 @@ class Downloadable(ABC):
         """
 
         def get_items():
+            """
+            Gets all items from current id.
+
+            Returns:
+                list: The items from the id
+            """
 
             items = []
 
@@ -88,7 +94,6 @@ class Downloadable(ABC):
         logger.debug(f'Getting {self.__class__.__name__} details')
         items = get_items()
 
-        # For each item in tag. Items are "albums"
         futures = []
         for item in items:
 
@@ -422,3 +427,50 @@ class Account:
             page += 1
 
         return favorites
+
+    async def get_account_images(self, username: str, starting_page: int = 0):
+        """
+        Get all images from an account
+
+        Parameters:
+            username (str): The username of the account
+            page (int): The page number to start on
+
+        Returns:
+            list: A list of all images from the account
+        """
+
+        def _get_next_page(_page):
+            return self.api.get(
+                f'account/{username}/images/{_page}',
+                headers={
+                    'Authorization': f'Bearer {self.api._configuration.access_token}',
+                }
+            )
+
+        account_images = []
+        page = starting_page
+
+        while len(response := _get_next_page(page)) != 0:
+            account_images.extend(response)
+            page += 1
+
+        return account_images
+
+    async def get_gallery_favorites(self, username: str, starting_page: int = 0, sort: str = 'newest'):
+        """
+        Get all gallery favorites from an account
+
+        Parameters:
+            username (str): The username of the account
+            sort (str): The sort order of the gallery favorites
+
+        Returns:
+            list: A list of all gallery favorites from the account
+        """
+        return self.api.get(
+            f'account/{username}/gallery_favorites/{starting_page}/{sort}',
+            headers={
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id,
+            }
+        )

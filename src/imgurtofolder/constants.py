@@ -1,4 +1,3 @@
-
 IMGUR_BASE_EXTENSIONS = {
     'album': [r'(/a/)(\w+)'],
     'gallery': [r'(/g/)(\w+)', r'(/gallery/)(\w+)'],
