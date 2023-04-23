@@ -3,7 +3,7 @@ from typing import Optional
 from imgurtofolder.constants import IMGUR_BASE_EXTENSIONS
 import os
 from pathlib import Path
-from pprint import pformat
+from pprint import pformat, pprint
 from time import sleep
 from typing import List
 
@@ -39,8 +39,8 @@ class Downloadable(ABC):
     Abstract class which holds all the common methods for downloading images and albums.
     """
 
-    def __init__(self, hash: str, api: ImgurAPI):
-        self.hash = hash
+    def __init__(self, id: str, api: ImgurAPI):
+        self.id = id
         self.api = api
 
     @abstractmethod
@@ -71,18 +71,17 @@ class Image(Downloadable):
             dict: The metadata for the image
         """
         return self.api.get(
-            url=f"image/{self.hash}",
+            url=f"image/{self.id}",
             headers={
                 "Authorization": f"Client-ID {self.api._configuration.client_id}",
             }
         ).get('data')
 
-    async def download(self, path, overwrite: bool = False, enumeration: Optional[int] = None):
+    async def download(self, path: Optional[str] = None, overwrite: bool = False, enumeration: Optional[int] = None):
         """
         Downloads a file from a url to a path
 
         Parameters:
-            path (str): The path to download the file to
             overwrite (bool): If True, overwrite existing files
             kwargs: Additional arguments
 
@@ -98,11 +97,15 @@ class Image(Downloadable):
 
         _url = metadata.get('link')
 
-        _path = Path(path)
+        _path = Path(
+            path
+            or
+            self.api._configuration.download_path
+        )
 
         if not _path.exists():
             logger.debug(f'Creating folder path {_path}')
-            os.makedirs(path)
+            _path.mkdir(parents=True, exist_ok=True)
 
         _full_path = _path / _filename
 
@@ -110,11 +113,15 @@ class Image(Downloadable):
             logger.info(f'Skipping {_full_path} because it already exists')
             return
 
-        response: requests.Response = self.api.get(_url, return_raw_response=True, stream=True)
+        response: requests.Response = self.api.get(
+            _url,
+            return_raw_response=True,
+            stream=True
+        )
 
         if response.status_code != 200:
             logger.error('Error downloading image: %s' % pformat(response.json()))
-            raise ValueError(f'Error downloading image: {self.hash}')
+            raise ValueError(f'Error downloading image: {self.id}')
 
         file_size = \
             int(response.headers.get('content-length', 0)) / float(1 << 20)
@@ -145,13 +152,13 @@ class Album(Downloadable):
         # _hash = re.search(r"(https?)?(.*\.com\/)(\w+)(\..*)?$", self.url).group(3)
 
         return self.api.get(
-            url=f"album/{self.hash}",
+            url=f"album/{self.id}",
             headers={
                 "Authorization": f"Client-ID {self.api._configuration.client_id}",
             }
         ).get('data')
 
-    async def download(self, path: str = None, overwrite: bool = False):
+    async def download(self, overwrite: bool = False):
 
         metadata = self.get_metadata()
 
@@ -165,17 +172,21 @@ class Album(Downloadable):
 
         _images = metadata.get('images') or []
 
+        _futures = []
         for position, image in enumerate(_images, start=1):
-            await asyncio.create_task(
-                Image(
-                    hash=image.get('id'),
-                    api=self.api
-                ).download(
-                    path=_path,
-                    overwrite=overwrite,
-                    enumeration=position
+            _futures.append(
+                asyncio.create_task(
+                    Image(
+                        id=image.get('id'),
+                        api=self.api
+                    ).download(
+                        path=_path,
+                        overwrite=overwrite,
+                        enumeration=position
+                    )
                 )
             )
+        await asyncio.gather(*_futures)
 
 
 class Gallery(Album):
@@ -183,55 +194,88 @@ class Gallery(Album):
     Class which holds all the methods for downloading galleries.
     """
 
-    def get_metadata(self, gallery_hash):
-        url = f'gallery/{gallery_hash}'
-        headers = {
-            'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
-        }
-        return self._api.get(url, headers=headers)
+    def get_metadata(self, **kwargs):
+        """
+        Gets the metadata for the image using the API.
 
-    def download(self, id):
+        Returns:
+            dict: The metadata for the image
+        """
+        return self.api.get(
+            f'gallery/{self.id}',
+            headers={
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id
+            }
+        ).get('data')
 
-        logger.debug('Getting Gallery details')
-        album = self.get_gallery_album(id)['data']
-        title = album['title'] if album['title'] else album['id']
-        title = self.replace_characters(title)
-        path = os.path.join(self.get_download_path(), title)
 
-        logger.debug("Checking if folder exists")
-        if not os.path.exists(path):
-            logger.debug("Creating folder: %s" % path)
-            os.makedirs(path)
+class Account:
 
-        if 'images' in album:
-            logger.info('Downloading gallery %s' % album['id'])
-            for position, image in enumerate(album['images'], start=1):
-                image_link, filetype = self.get_image_link(image)
-                filename = album['id'] + ' - ' + str(position) + filetype
-                Image().download(filename, image_link, path)
+    def __init__(self, username: str, api: ImgurAPI):
+        self.username = username
+        self.api = api
 
-        else:
-            image_link, filetype = self.get_image_link(album)
-            filename = image_link[image_link.rfind('/') + 1:]
-            logger.info('Downloading gallery image: %s' % filename)
-            Image().download(filename, image_link, path)
+    def get_account_submissions(self):
+        """
+        Get all submissions from an account
 
-    def download_favorites(self, username, latest=True, page=0, max_items=None):
-        logger.info("Getting account favorites")
-        favorites = self.get_account_favorites(username=username,
-                                               sort='oldest' if not latest else 'newest',
-                                               page=page,
-                                               max_items=max_items)
-        logger.debug('Number of favorites: %d' % len(favorites))
-        for favorite in favorites:
-            self.parse_id(favorite['link'])
+        Parameters:
+            username (str): The username of the account
 
-    def list_favorites(self, username, latest=True, page=0, max_items=-1):
-        favorites = self.get_account_favorites(username=username,
-                                               sort='oldest' if not latest else 'newest',
-                                               page=page,
-                                               max_items=max_items)
-        logger.info(pformat(favorites))
+        Returns:
+            list: A list of all submissions from the account
+        """
+        return self.api.get(
+            f'account/{self.username}/submissions/',
+            {
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id,
+            }
+        )
+
+    async def get_account_favorites(self, username, sort='newest', page=0, max_items=-1):
+        """
+        Get all favorites from an account
+
+        Parameters:
+            username (str): The username of the account
+            sort (str): The sort order of the favorites
+            page (int): The page number to start on
+            max_items (int): The maximum number of items to return
+
+        Returns:
+            list: A list of all favorites from the account
+        """
+
+        async def _get_next_page(username: str, page: int, sort: str):
+            """
+            Gets the next page of favorites
+
+            Parameters:
+                username (str): The username of the account
+                page (int): The page number to start on
+                sort (str): The sort order of the favorites
+            """
+            logger.info(f'Getting page {page} of favorites')
+            _response = self.api.get(
+                f'account/{username}/favorites/{page}/{sort}',
+                headers={
+                    'Authorization': f'Bearer {self.api._configuration.access_token}',
+                }
+            ).get('data')
+            await asyncio.sleep(.05)
+            return _response
+
+        favorites = []
+
+        while len(response := await _get_next_page(username, page, sort)) != 0:
+
+            if len(favorites) > max_items:
+                return favorites[:max_items]
+
+            favorites.extend(response)
+            page += 1
+
+        return favorites
 
 
 class Tag(Downloadable):
@@ -239,65 +283,75 @@ class Tag(Downloadable):
     Class which holds all the methods for downloading tags.
     """
 
-    def download(self, id, page=0, max_items=30):
+    def __init__(self, id: str, api: ImgurAPI):
+        self.id = id
+        self.api = api
+
+    def get_metadata(self, sort='top', window='week', page=0):
+        logger.info(f'Getting page {page} of favorites')
+        _response = self.api.get(
+            f'gallery/t/{self.id}/{sort}/{window}/{page}',
+            headers={
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id
+            }
+        ).get('data')
+        return _response
+
+    async def download(self, starting_page: int = 0, max_items: int = 30):
+
+        def get_items():
+
+            items = []
+
+            _page = starting_page
+
+            while response := self.get_metadata(page=_page):
+
+                _items = response.get('items') or []
+
+                if (
+                        len(response) == 0
+                        or
+                        len(items) > max_items
+                ):
+                    return items[:max_items]
+
+                items.extend(_items)
+
+                _page += 1
+
+            return items[:max_items]
 
         logger.debug('Getting tag details')
-        items = self.get_tag(id, page=page, max_items=max_items)
+        items = get_items()
 
         # For each item in tag. Items are "albums"
+        futures = []
         for item in items:
 
-            if 'images' in item:
-                tag_root_title = item['title'] if item['title'] else item['id']
-                tag_root_title = self.replace_characters(tag_root_title)
-                tag_root_path = os.path.join(
-                    self.get_download_path(), tag_root_title)
-                self.mkdir(tag_root_path)
-
-                for position, sub_image in enumerate(item['images'], start=1):
-                    title = sub_image['title'] if sub_image['title'] else sub_image['id']
-                    title = self.replace_characters(title)
-                    path = os.path.join(tag_root_path, title)
-
-                    self.mkdir(path)
-
-                    logger.info('Downloading tag: %s' % title)
-                    image_link, filetype = self.get_image_link(sub_image)
-                    image_filename = "{} - {}{}".format(
-                        sub_image['id'], position, filetype)
-                    Image().download(image_filename, image_link, path)
+            if item.get('is_album') is True:
+                logger.info('Downloading album: %s' % item['title'])
+                futures.append(
+                    asyncio.create_task(
+                        Album(
+                            id=item['id'],
+                            api=self.api
+                        ).download()
+                    )
+                )
 
             else:
-                title = item['title'] if item['title'] else item['id']
-                title = self.replace_characters(title)
-                path = os.path.join(self.get_download_path(), title)
+                logger.info('Downloading image: %s' % item['title'])
+                futures.append(
+                    asyncio.create_task(
+                        Image(
+                            id=item['id'],
+                            api=self.api
+                        ).download()
+                    )
+                )
 
-                self.mkdir(path)
-
-                logger.info('Downloading tag: %s' % title)
-                image_link, filetype = self.get_image_link(sub_image)
-                image_filename = "{} - {}{}".format(
-                    sub_image['id'], position, filetype)
-                Image().download(image_filename, image_link, path)
-
-    def get_tag(self, tag, sort='top', window='week', page=0, max_items=30):
-        headers = {
-            'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
-        }
-
-        items = []
-        url = f'gallery/t/{tag}/{sort}/{window}/{page}'
-        response = self._api.get(url, headers)
-
-        while len(response) != 0 and len(items) < max_items:
-            for item in response['items']:
-                items.append(item)
-
-            url = f'gallery/t/{tag}/{sort}/{window}/{page}'
-            logger.debug('Url to download: %s' % url)
-            response = self._api.get(url, headers)
-            page += 1
-        return items[:max_items + 1]
+        await asyncio.gather(*futures)
 
 
 class Subreddit(Downloadable):

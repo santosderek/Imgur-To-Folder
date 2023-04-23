@@ -1,3 +1,4 @@
+from pprint import pformat
 import webbrowser
 import re
 from copy import deepcopy
@@ -67,6 +68,7 @@ class OAuth:
 def _raise_exception_given_response(response: requests.Response):
     message = f'Request returned incorrect response: {response.status_code} - {response}'
     logger.error(message)
+    logger.debug(pformat(response.json()))
     raise HTTPError(message)
 
 
