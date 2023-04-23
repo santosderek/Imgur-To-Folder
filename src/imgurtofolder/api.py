@@ -1,15 +1,15 @@
-from pprint import pformat
-import webbrowser
 import re
+import webbrowser
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from logging import getLogger
+from pprint import pformat
+from typing import Dict, Optional
 from urllib.parse import urljoin
 
 import requests
 from requests.exceptions import HTTPError
 
 from imgurtofolder.configuration import Configuration
-from logging import getLogger
 
 logger = getLogger(__name__)
 

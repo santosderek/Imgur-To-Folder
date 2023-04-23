@@ -1,26 +1,24 @@
 from abc import ABC, abstractmethod
-from typing import Optional
-from imgurtofolder.constants import IMGUR_BASE_EXTENSIONS
-import os
+import asyncio
+from logging import getLogger
 from pathlib import Path
-from pprint import pformat, pprint
-from time import sleep
-from typing import List
+from pprint import pformat
+import shutil
+from typing import Optional
 
 import requests
-import re
+
 from imgurtofolder.imgur import ImgurAPI
 
-from logging import getLogger
-
-from pprint import pformat
-from os.path import exists
-import shutil
-
-import asyncio
-
+from enum import Enum
 logger = getLogger(__name__)
 
+class ImgurObjectType(Enum):
+    ALBUM = 1
+    GALLERY = 2
+    SUBREDDIT = 3
+    TAG = 4
+    IMAGE = 5
 
 def replace_characters(word):
     # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
@@ -32,6 +30,8 @@ def replace_characters(word):
         word = word.replace(character, '')
 
     return word.strip()
+
+##### Downloadables #####
 
 
 class Downloadable(ABC):
@@ -358,6 +358,8 @@ class Subreddit(Downloadable):
             id=subreddit_album['id'],
             api=self.api
         ).download()
+
+##### Account #####
 
 
 class Account:

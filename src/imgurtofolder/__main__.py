@@ -1,15 +1,12 @@
-# Derek Santos
 import argparse
 import json
 from os.path import expanduser, join
 from pathlib import Path
 from typing import Optional
-from imgurToFolder.api import OAuth
-import imgur
-import imgur_downloader
-import logs
+
 from configuration import Configuration
 from configuration import log as configuration_log
+from imgurtofolder.api import OAuth
 
 CONFIG_PATH = join(expanduser('~'), ".config", "imgurToFolder", 'config.json')
 

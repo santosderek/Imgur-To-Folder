@@ -1,10 +1,7 @@
 import json
-from os import mkdir
-import os.path
+from logging import getLogger
 from os.path import expanduser, realpath
 from pathlib import Path
-
-from logging import getLogger
 
 logger = getLogger(__name__)
 
