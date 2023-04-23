@@ -73,6 +73,9 @@ def _raise_exception_given_response(response: requests.Response):
 
 
 class ImgurAPI:
+    """
+    A class to interact with the Imgur API as a singleton
+    """
 
     DEFAULT_HEADERS: Dict[str, str] = {
         'Content-Type': 'application/json',

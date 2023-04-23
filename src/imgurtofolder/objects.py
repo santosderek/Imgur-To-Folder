@@ -44,18 +44,75 @@ class Downloadable(ABC):
         self.api = api
 
     @abstractmethod
-    def get_metadata(self, **kwargs) -> 'Downloadable':
+    def get_metadata(self, **kwargs):
         """
         Gets the metadata for the object using the API.
         """
         ...
 
-    @abstractmethod
-    async def download(self, overwrite: bool = False, **kwargs) -> 'Downloadable':
+    async def download(self, starting_page: int = 0, max_items: int = 30):
         """
-        Downloads the multi-media blob.
+        Downloads all items from current id.
+
+        Parameters:
+            starting_page (int): The page number to start on
+            max_items (int): The maximum number of items to return
         """
-        ...
+
+        def get_items():
+
+            items = []
+
+            _page = starting_page
+
+            while response := self.get_metadata(page=_page):
+
+                _items = response
+
+                if isinstance(_items, dict):
+                    _items = response.get('items') or []
+
+                items.extend(_items)
+
+                if (
+                        len(_items) == 0
+                        or
+                        len(items) > max_items
+                ):
+                    return _items[:max_items]
+
+                _page += 1
+
+            return items[:max_items]
+
+        logger.debug(f'Getting {self.__class__.__name__} details')
+        items = get_items()
+
+        # For each item in tag. Items are "albums"
+        futures = []
+        for item in items:
+
+            if item.get('is_album') is True:
+                futures.append(
+                    asyncio.create_task(
+                        Album(
+                            id=item['id'],
+                            api=self.api
+                        ).download()
+                    )
+                )
+
+            else:
+                futures.append(
+                    asyncio.create_task(
+                        Image(
+                            id=item['id'],
+                            api=self.api
+                        ).download()
+                    )
+                )
+
+        await asyncio.gather(*futures)
 
 
 class Image(Downloadable):
@@ -128,12 +185,13 @@ class Image(Downloadable):
 
         logger.info('\t%s, File Size: %.2f MB' % (_full_path, file_size))
 
-        # Placing a sleep here to prevent rate limiting
-        await asyncio.sleep(.1)
-
         with _full_path.open('wb') as image_file:
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, image_file)
+
+        del response  # Dealocate the meemory used in order to stream the file while we wait
+        # Placing a sleep here to prevent rate limiting while I implement a better way in the future with some Queue, etc.
+        await asyncio.sleep(.1)
 
 
 class Album(Downloadable):
@@ -209,6 +267,94 @@ class Gallery(Album):
         ).get('data')
 
 
+class Tag(Downloadable):
+    """
+    Class which holds all the methods for downloading tags.
+    """
+
+    def __init__(self, id: str, api: ImgurAPI):
+        """
+        Parameters:
+            id (str): The id of the tag
+            api (ImgurAPI): The ImgurAPI object
+        """
+        self.id = id
+        self.api = api
+
+    def get_metadata(self, sort='top', window='week', page=0):
+        """
+        Gets the metadata for the image using the API.
+
+        Parameters:
+            sort (str): The sort order of the favorites
+            window (str): The time window of the favorites
+            page (int): The page number to start on
+        """
+        logger.info(f'Getting page {page} of favorites')
+        return self.api.get(
+            f'gallery/t/{self.id}/{sort}/{window}/{page}',
+            headers={
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id
+            }
+        ).get('data')
+
+
+class Subreddit(Downloadable):
+    """
+    Class which holds all the methods for downloading subreddits.
+    """
+
+    def get_metadata(self, sort: str = 'time', window: str = 'day', page: int = 0):
+        """
+        Gets the metadata for the image using the API.
+
+        Parameters:
+            sort (str): The sort order of the favorites
+            window (str): The window of the sort order
+            page (int): The page number to start on
+        """
+
+        return self.api.get(
+            f'gallery/r/{self.id}/{sort}/{window}/{page}',
+            headers={
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id
+            }
+        ).get('data')
+
+    def get_image(self, subreddit: str, image_id: str):
+        """
+        Gets the metadata for the image using the API.
+
+        Parameters:
+            subreddit (str): The subreddit to get the image from
+            image_id (str): The id of the image
+        """
+
+        return self.api.get(
+            f'gallery/r/{subreddit}/{image_id}',
+            headers={
+                'Authorization': 'Client-ID %s' % self.api._configuration.client_id
+            }
+        ).get('data')
+
+    async def download_from_subreddit(self, subreddit: str, id: str):
+        """
+        Downloads an image from a subreddit
+
+        Parameters:
+            subreddit (str): The subreddit to get the image from
+            id (str): The id of the image
+        """
+
+        logger.debug('Getting subreddit gallery details')
+        subreddit_album = self.get_image(subreddit, id)
+
+        await Album(
+            id=subreddit_album['id'],
+            api=self.api
+        ).download()
+
+
 class Account:
 
     def __init__(self, username: str, api: ImgurAPI):
@@ -276,134 +422,3 @@ class Account:
             page += 1
 
         return favorites
-
-
-class Tag(Downloadable):
-    """
-    Class which holds all the methods for downloading tags.
-    """
-
-    def __init__(self, id: str, api: ImgurAPI):
-        self.id = id
-        self.api = api
-
-    def get_metadata(self, sort='top', window='week', page=0):
-        logger.info(f'Getting page {page} of favorites')
-        _response = self.api.get(
-            f'gallery/t/{self.id}/{sort}/{window}/{page}',
-            headers={
-                'Authorization': 'Client-ID %s' % self.api._configuration.client_id
-            }
-        ).get('data')
-        return _response
-
-    async def download(self, starting_page: int = 0, max_items: int = 30):
-
-        def get_items():
-
-            items = []
-
-            _page = starting_page
-
-            while response := self.get_metadata(page=_page):
-
-                _items = response.get('items') or []
-
-                if (
-                        len(response) == 0
-                        or
-                        len(items) > max_items
-                ):
-                    return items[:max_items]
-
-                items.extend(_items)
-
-                _page += 1
-
-            return items[:max_items]
-
-        logger.debug('Getting tag details')
-        items = get_items()
-
-        # For each item in tag. Items are "albums"
-        futures = []
-        for item in items:
-
-            if item.get('is_album') is True:
-                logger.info('Downloading album: %s' % item['title'])
-                futures.append(
-                    asyncio.create_task(
-                        Album(
-                            id=item['id'],
-                            api=self.api
-                        ).download()
-                    )
-                )
-
-            else:
-                logger.info('Downloading image: %s' % item['title'])
-                futures.append(
-                    asyncio.create_task(
-                        Image(
-                            id=item['id'],
-                            api=self.api
-                        ).download()
-                    )
-                )
-
-        await asyncio.gather(*futures)
-
-
-class Subreddit(Downloadable):
-    """
-    Class which holds all the methods for downloading subreddits.
-    """
-
-    def get_metadata(self, subreddit, sort='time', window='day', page=0):
-        url = f'gallery/r/{subreddit}/{sort}/{window}/{page}'
-        headers = {
-            'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
-        }
-        return self._api.get(url, headers=headers)
-
-    def get_image(self, subreddit, image_id):
-        url = f'gallery/r/{subreddit}/{image_id}'
-        headers = {
-            'Authorization': 'Client-ID %s' % self._configuration.get_client_id()
-        }
-        return self._api.get(url, headers=headers)
-
-    def download_from_subreddit(self, subreddit, id):
-
-        logger.debug('Getting subreddit gallery details')
-        subreddit_album = self.get_subreddit_image(subreddit, id)['data']
-        title = subreddit_album['title'] if subreddit_album['title'] else subreddit_album['id']
-        title = self.replace_characters(title)
-        path = self.get_download_path()
-
-        logger.debug("Checking if folder exists")
-        if not os.path.exists(path):
-            logger.debug("Creating folder: %s" % path)
-            os.makedirs(path)
-
-        logger.info('Downloading subreddit gallery image: %s' % title)
-        image_link, filetype = self.get_image_link(subreddit_album)
-        filename = image_link[image_link.rfind('/') + 1:]
-        Image().download(filename, image_link, self.get_download_path())
-
-    def download(self, subreddit, sort='time', window='day', page=0, max_items=30):
-        logger.debug("Getting subreddit details")
-        subreddit_data = []
-        response = self.get_subreddit_gallery(
-            subreddit, sort=sort, window=window, page=page)['data']  # TODO: use .get()
-
-        while len(subreddit_data) < max_items and len(response) != 0:
-            subreddit_data += response
-            page += 1
-            response = self.get_subreddit_gallery(
-                subreddit, sort, window, page)['data']
-
-        logger.debug("Sending subreddit items to parse_id")
-        for position, item in enumerate(subreddit_data):
-            if position + 1 <= max_items:
-                self.parse_id(item["link"], page, max_items)
