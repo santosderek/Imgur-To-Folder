@@ -1,6 +1,5 @@
 import asyncio
 import re
-from dataclasses import dataclass
 from logging import getLogger
 from typing import List, Optional
 
@@ -25,66 +24,67 @@ def parse_id(url: str) -> Optional[ImgurObjectResponse]:
         window (str): The window type
     """
 
-    if any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['album']):
+    for item in IMGUR_BASE_EXTENSIONS['album']:
+        _search = re.search(item, url)
+
+        if not _search:
+            continue
+
         return ImgurObjectResponse(
-            id=re.search(item, url).group(2),
+            id=_search.group(2),
             type=ImgurObjectType.ALBUM
         )
 
-    elif any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['gallery']):
-        for item in IMGUR_BASE_EXTENSIONS['gallery']:
-            _search = re.search(item, url)
+    for item in IMGUR_BASE_EXTENSIONS['gallery']:
+        _search = re.search(item, url)
 
-            if not _search:
-                continue
+        if not _search:
+            continue
 
-            return ImgurObjectResponse(
-                id=_search.group(2),
-                type=ImgurObjectType.GALLERY
-            )
-
-    elif any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['subreddit']):
-        for item in IMGUR_BASE_EXTENSIONS['subreddit']:
-
-            _search = re.search(item, url)
-
-            if not _search:
-                continue
-
-            subreddit = _search.group(2)
-            id = _search.group(3) if re.compile(item).groups > 2 else None
-
-            if id is None and subreddit is not None:
-                return ImgurObjectResponse(
-                    id=subreddit,
-                    type=ImgurObjectType.SUBREDDIT
-                )
-
-            elif subreddit is not None and id is not None:
-                return ImgurObjectResponse(
-                    id=id,
-                    type=ImgurObjectType.SUBREDDIT,
-                    subreddit=subreddit
-                )
-
-    elif any(re.search(item, url) for item in IMGUR_BASE_EXTENSIONS['tag']):
-        for item in IMGUR_BASE_EXTENSIONS['tag']:
-
-            _search = re.search(item, url)
-
-            if not _search:
-                continue
-
-            return ImgurObjectResponse(
-                id=_search.group(2),
-                type=ImgurObjectType.TAG
-            )
-
-    else:
         return ImgurObjectResponse(
-            id=re.search(IMGUR_BASE_EXTENSIONS['image'][0], url).group(3),
-            type=ImgurObjectType.IMAGE
+            id=_search.group(2),
+            type=ImgurObjectType.GALLERY
         )
+
+    for item in IMGUR_BASE_EXTENSIONS['subreddit']:
+
+        _search = re.search(item, url)
+
+        if not _search:
+            continue
+
+        subreddit = _search.group(2)
+        id = _search.group(3) if re.compile(item).groups > 2 else None
+
+        if id is None and subreddit is not None:
+            return ImgurObjectResponse(
+                id=subreddit,
+                type=ImgurObjectType.SUBREDDIT
+            )
+
+        elif subreddit is not None and id is not None:
+            return ImgurObjectResponse(
+                id=id,
+                type=ImgurObjectType.SUBREDDIT,
+                subreddit=subreddit
+            )
+
+    for item in IMGUR_BASE_EXTENSIONS['tag']:
+
+        _search = re.search(item, url)
+
+        if not _search:
+            continue
+
+        return ImgurObjectResponse(
+            id=_search.group(2),
+            type=ImgurObjectType.TAG
+        )
+
+    return ImgurObjectResponse(
+        id=re.search(IMGUR_BASE_EXTENSIONS['image'][0], url).group(3),
+        type=ImgurObjectType.IMAGE
+    )
 
 
 async def download_urls(urls: List[str], api: ImgurAPI):
