@@ -2,14 +2,14 @@ import asyncio
 import re
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Optional
+from typing import List, Optional
 
 from imgurtofolder.api import ImgurAPI
 from imgurtofolder.constants import IMGUR_BASE_EXTENSIONS
 from imgurtofolder.objects import (Account, Album, Gallery, Image,
                                    ImgurObjectResponse, ImgurObjectType,
-                                   Subreddit)
-from typing import List
+                                   Subreddit, Tag)
+
 logger = getLogger(__name__)
 
 
@@ -175,5 +175,12 @@ async def download_favorites(username: str, api: ImgurAPI, sort: str = 'newest',
 
 
 async def download_account_images(username: str, api: ImgurAPI, starting_page: int = 0, max_items: int = 30):
+    """
+    Downloads the images of the user specified
+
+    Parameters:
+        page (int): The page to start on
+        max_items (int): The maximum number of items to download
+    """
     account_images = await Account(username, api).get_account_images(username, starting_page=starting_page, max_items=max_items)
     await download_urls([image['link'] for image in account_images], api)
