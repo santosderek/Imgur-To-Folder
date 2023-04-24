@@ -64,7 +64,7 @@ class Configuration:
             'refresh_token': self.refresh_token
         }
 
-    def save_configuration(self, overwrite_download_path=False):
+    def save(self, overwrite_download_path=False):
         """
         Save the current configuration to the config file.
 

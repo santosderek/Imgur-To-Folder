@@ -10,7 +10,7 @@ from typing import Optional
 
 import requests
 
-from imgurtofolder.imgur import ImgurAPI
+from imgurtofolder.api import ImgurAPI
 
 logger = getLogger(__name__)
 

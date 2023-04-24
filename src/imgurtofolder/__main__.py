@@ -2,23 +2,20 @@ import argparse
 import asyncio
 import json
 from argparse import Namespace
+from logging import getLogger
 from os.path import expanduser, join
 from pathlib import Path
-from typing import List, Optional
-
-from configuration import Configuration
-from configuration import log as configuration_log
+from typing import Optional
 
 from imgurtofolder.api import ImgurAPI, OAuth
-from imgurtofolder.downloader import (ImgurObjectResponse,
-                                      download_account_images,
-                                      download_favorites, parse_id)
-from imgurtofolder.objects import (Account, Album, Gallery, Image,
-                                   ImgurObjectType, Subreddit, Tag)
+from imgurtofolder.configuration import Configuration
+from imgurtofolder.downloader import (download_account_images,
+                                      download_favorites, download_urls)
+from imgurtofolder.objects import Account
 
 CONFIG_PATH = join(expanduser('~'), ".config", "imgurToFolder", 'config.json')
 
-log = logs.Log('main')
+log = getLogger(__name__)
 
 
 def parse_arguments():

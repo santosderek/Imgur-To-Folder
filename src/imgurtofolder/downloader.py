@@ -140,7 +140,7 @@ async def download_urls(urls: List[str], api: ImgurAPI):
     await asyncio.gather(*futures)
 
 
-async def download_favorites(self, username: str, api: ImgurAPI, sort: str = 'newest', starting_page: int = 0, max_items: Optional[int] = None):
+async def download_favorites(username: str, api: ImgurAPI, sort: str = 'newest', starting_page: int = 0, max_items: Optional[int] = None):
     """
     Downloads the favorites of the user
 

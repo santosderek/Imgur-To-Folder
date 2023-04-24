@@ -42,7 +42,7 @@ class OAuth:
         refresh_token = re.search('refresh_token=(\w+)', user_input).group(1)
         self._configuration.access_token = access_token
         self._configuration.refresh_token = refresh_token
-        self._configuration.save_configuration()
+        self._configuration.save()
         logger.debug('Configuration saved')
         logger.info('The application is now authorized')
 
