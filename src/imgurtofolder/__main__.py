@@ -1,12 +1,20 @@
 import argparse
+import asyncio
 import json
+from argparse import Namespace
 from os.path import expanduser, join
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from configuration import Configuration
 from configuration import log as configuration_log
-from imgurtofolder.api import OAuth
+
+from imgurtofolder.api import ImgurAPI, OAuth
+from imgurtofolder.downloader import (ImgurObjectResponse,
+                                      download_account_images,
+                                      download_favorites, parse_id)
+from imgurtofolder.objects import (Account, Album, Gallery, Image,
+                                   ImgurObjectType, Subreddit, Tag)
 
 CONFIG_PATH = join(expanduser('~'), ".config", "imgurToFolder", 'config.json')
 
@@ -63,7 +71,16 @@ def parse_arguments():
 
 
 def ask_for(name: str, expand: bool = True) -> str:
-    """ Ask for a specific input """
+    """
+    Ask for a value; mostly to reduce code duplication.
+
+    Parameters:
+        name (str): The name of the value.
+        expand (bool): Expand the path.
+
+    Returns:
+        str: The value.
+    """
     _result: Optional[str] = None
 
     while not _result:
@@ -116,7 +133,7 @@ def load_config(path: str) -> dict:
         with Path(path).open('r') as current_file:
             return json.load(current_file)
     except Exception as e:
-        log.debug("Error when loading config", exc_info=True)
+        log.error("Error when loading config", exc_info=True)
         exit(1)  # TODO: Don't exit here and keep asking instead.
 
 
@@ -125,7 +142,62 @@ def main():
     args = parse_arguments()
 
     log.debug('Checking configuation')
+    config = fetch_configuration(args)
 
+    log.debug('Reacting to args')
+    if args.verbose:
+        # TODO: set all the loggers to debug
+        ...
+
+    if args.print_download_path:
+        log.info(f'Default download path: {config.download_path}')
+
+    if args.folder is not None:
+        config.download_path = expanduser(args.folder)
+
+    if args.change_default_folder:
+        config.download_path = expanduser(args.change_default_folder)
+        config.save()
+
+    # Authorize if not already
+    if not config.access_token:
+        OAuth(config).authorize()
+
+    api = ImgurAPI(config)
+
+    if args.list_all_favorites is not None:
+        asyncio.run(
+            Account(
+                username='me',
+                api=api
+            ).get_account_favorites('me')
+        )
+
+    asyncio.run(download_urls(args.urls, api))
+
+    if args.download_favorites is not None:
+        log.debug(
+            f'Downloading favorites by {"Oldest" if args.oldest else "Latest" }'
+        )
+        download_favorites(
+            args.download_favorites,
+            sort='newest' if args.oldest else 'latest',
+            page=args.start_page,
+            max_items=args.max_downloads
+        )
+
+    if args.download_account_images is not None:
+        log.debug('Downloading account images')
+        download_account_images(
+            args.download_account_images,
+            page=args.start_page,
+            max_items=args.max_downloads
+        )
+
+    log.info('Done.')
+
+
+def fetch_configuration(args: Namespace) -> Configuration:
     _config_dict = load_config(CONFIG_PATH)
     config = Configuration(
         **{
@@ -134,64 +206,8 @@ def main():
             'overwrite': args.overwrite
         }
     )
-    config.save_configuration(True)
-
-    log.debug('Reacting to args')
-
-    if args.verbose:
-        log.set_debug()
-        imgur.log.set_debug()
-        imgur_downloader.log.set_debug()
-        configuration_log.set_debug()
-
-    if args.print_download_path:
-        log.info(f'Default download path: {config.get_download_path()}')
-
-    downloader = imgur_downloader.Imgur_Downloader(config, args.max_downloads)
-
-    if args.folder is not None:
-        downloader.set_download_path(expanduser(args.folder))
-
-    if args.change_default_folder:
-        downloader.set_default_folder_path(args.change_default_folder)
-
-    if args.list_all_favorites is not None:
-        downloader.list_favorites(args.list_all_favorites,
-                                  latest=True,
-                                  page=args.start_page,
-                                  max_items=args.max_downloads if args.max_downloads else -1)
-
-    # Authorize if not already
-    if not config.access_token:
-        OAuth(config).authorize()
-
-    log.debug('Parsing ids')
-    for item in args.urls:
-        try:
-            downloader.parse_id(item,
-                                page=args.start_page,
-                                max_items=args.max_downloads,
-                                sort=args.sort,
-                                window=args.window)
-        except Exception as e:
-            log.exception(f'Error with url {item}:')
-
-    if args.download_favorites is not None:
-        log.debug(
-            f'Downloading favorites by {"Oldest" if args.oldest else "Latest" }'
-        )
-        downloader.download_favorites(args.download_favorites,
-                                      latest=not args.oldest,
-                                      page=args.start_page,
-                                      max_items=args.max_downloads if args.max_downloads else 30)
-
-    if args.download_account_images is not None:
-        log.debug('Downloading account images')
-        downloader.download_account_images(args.download_account_images,
-                                           page=args.start_page,
-                                           max_items=args.max_downloads if args.max_downloads else 30)
-
-    log.info('Done.')
+    config.save(True)
+    return config
 
 
 if __name__ == '__main__':

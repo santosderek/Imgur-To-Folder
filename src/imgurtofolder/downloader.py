@@ -1,23 +1,16 @@
+import asyncio
 import re
 from dataclasses import dataclass
 from logging import getLogger
-from os.path import basename
 from typing import Optional
-from urllib.parse import urlparse
 
+from imgurtofolder.api import ImgurAPI
 from imgurtofolder.constants import IMGUR_BASE_EXTENSIONS
-from imgurtofolder.objects import (Album, Gallery, Image, ImgurObjectType,
+from imgurtofolder.objects import (Account, Album, Gallery, Image,
+                                   ImgurObjectResponse, ImgurObjectType,
                                    Subreddit)
-
+from typing import List
 logger = getLogger(__name__)
-
-
-@dataclass
-class ImgurObjectResponse:
-
-    id: str
-    type: ImgurObjectType
-    subreddit: Optional[str] = None
 
 
 def parse_id(url: str) -> Optional[ImgurObjectResponse]:
@@ -88,29 +81,99 @@ def parse_id(url: str) -> Optional[ImgurObjectResponse]:
             )
 
     else:
-        return None
+        return ImgurObjectResponse(
+            id=re.search(IMGUR_BASE_EXTENSIONS['image'][0], url).group(2),
+            type=ImgurObjectType.IMAGE
+        )
 
 
-def download_album(url) -> Album:
+async def download_urls(urls: List[str], api: ImgurAPI):
     """
-    Downloads an album
+    Download a list of urls.
 
     Parameters:
-        url (str): The url to download
+        urls (List[str]): The list of urls.
+        api (ImgurAPI): The Imgur API object.
     """
-    for item in IMGUR_BASE_EXTENSIONS['album']:
-        result = re.search(item, url).group(2) \
-            if re.search(item, url) else None
-        if not result:
-            ValueError("Could not parse album ID from URL")
-        return Album(url).download(result)
+    futures = []
+    for url in urls:
+        try:
+            imgur_object: Optional[ImgurObjectResponse] = parse_id(url)
+
+            if imgur_object is None:
+                continue
+
+            if imgur_object.type == ImgurObjectType.IMAGE:
+                futures.append(
+                    Image(imgur_object.id, api).download()
+                )
+
+            elif imgur_object.type == ImgurObjectType.ALBUM:
+                futures.append(
+                    Album(imgur_object.id, api).download()
+                )
+
+            elif imgur_object.type == ImgurObjectType.GALLERY:
+                futures.append(
+                    Gallery(imgur_object.id, api).download()
+                )
+
+            elif imgur_object.type == ImgurObjectType.TAG:
+                futures.append(
+                    Tag(imgur_object.id, api).download()
+                )
+
+            elif imgur_object.type == ImgurObjectType.SUBREDDIT:
+
+                if imgur_object.id and imgur_object.subreddit:
+                    futures.append(
+                        Subreddit(imgur_object.id, api).download()
+                    )
+                else:
+                    futures.append(
+                        Subreddit(imgur_object.id, api).download_from_subreddit(imgur_object.subreddit)
+                    )
+
+        except Exception:
+            logger.exception(f'Error with url {url}:')
+
+    await asyncio.gather(*futures)
 
 
-def download_account_images(username, page=0, max_items=None):
-    account_images = self.get_account_images(username, page=page)
+async def download_favorites(self, username: str, api: ImgurAPI, sort: str = 'newest', starting_page: int = 0, max_items: Optional[int] = None):
+    """
+    Downloads the favorites of the user
 
+    Parameters:
+        sort (str): The sort type
+        page (int): The page to start on
+        max_items (int): The maximum number of items to download
+    """
+
+    _args = {
+        'page': starting_page,
+        'sort': sort,
+    }
     if max_items:
-        account_images = account_images[:max_items]
+        _args['max_items'] = max_items
 
-    for image in account_images:
-        self.parse_id(image['link'])
+    favorites = await Account(username, api).get_account_favorites(username, **_args)
+
+    futures = []
+    for favorite in favorites:
+        if favorite['is_album']:
+            futures.append(
+                Album(favorite['id'], api).download()
+            )
+
+        else:
+            futures.append(
+                Image(favorite['id'], api).download()
+            )
+
+    await asyncio.gather(*futures)
+
+
+async def download_account_images(username: str, api: ImgurAPI, starting_page: int = 0, max_items: int = 30):
+    account_images = await Account(username, api).get_account_images(username, starting_page=starting_page, max_items=max_items)
+    await download_urls([image['link'] for image in account_images], api)

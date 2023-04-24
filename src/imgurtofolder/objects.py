@@ -1,17 +1,19 @@
-from abc import ABC, abstractmethod
 import asyncio
+import shutil
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from pprint import pformat
-import shutil
 from typing import Optional
 
 import requests
 
 from imgurtofolder.imgur import ImgurAPI
 
-from enum import Enum
 logger = getLogger(__name__)
+
 
 class ImgurObjectType(Enum):
     ALBUM = 1
@@ -19,6 +21,17 @@ class ImgurObjectType(Enum):
     SUBREDDIT = 3
     TAG = 4
     IMAGE = 5
+
+
+@dataclass
+class ImgurObjectResponse:
+
+    id: str
+    type: ImgurObjectType
+    subreddit: Optional[str] = None
+
+
+##### Helper functions #####
 
 def replace_characters(word):
     # NOTE: '\\/:*?"<>|.' are invalid folder characters in a file system
@@ -342,17 +355,16 @@ class Subreddit(Downloadable):
             }
         ).get('data')
 
-    async def download_from_subreddit(self, subreddit: str, id: str):
+    async def download_from_subreddit(self, subreddit: str):
         """
         Downloads an image from a subreddit
 
         Parameters:
             subreddit (str): The subreddit to get the image from
-            id (str): The id of the image
         """
 
         logger.debug('Getting subreddit gallery details')
-        subreddit_album = self.get_image(subreddit, id)
+        subreddit_album = self.get_image(subreddit, self.id)
 
         await Album(
             id=subreddit_album['id'],
@@ -430,7 +442,7 @@ class Account:
 
         return favorites
 
-    async def get_account_images(self, username: str, starting_page: int = 0):
+    async def get_account_images(self, username: str, starting_page: int = 0, max_items: Optional[int] = None):
         """
         Get all images from an account
 
@@ -455,6 +467,9 @@ class Account:
 
         while len(response := _get_next_page(page)) != 0:
             account_images.extend(response)
+
+            if max_items is not None and len(account_images) > max_items:
+                return account_images[:max_items]
             page += 1
 
         return account_images
