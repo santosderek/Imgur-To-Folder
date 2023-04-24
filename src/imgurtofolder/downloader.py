@@ -82,7 +82,7 @@ def parse_id(url: str) -> Optional[ImgurObjectResponse]:
 
     else:
         return ImgurObjectResponse(
-            id=re.search(IMGUR_BASE_EXTENSIONS['image'][0], url).group(2),
+            id=re.search(IMGUR_BASE_EXTENSIONS['image'][0], url).group(3),
             type=ImgurObjectType.IMAGE
         )
 
