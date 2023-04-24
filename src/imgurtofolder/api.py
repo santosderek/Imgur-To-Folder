@@ -38,8 +38,10 @@ class OAuth:
         user_input = str(input("Paste the redirected url here: "))
 
         # Save access_token and refresh_token to users config
-        access_token = re.search('access_token=(\w+)', user_input).group(1)
-        refresh_token = re.search('refresh_token=(\w+)', user_input).group(1)
+        # TODO: Add error handling if group doesn't exist
+        access_token = re.search(r'access_token=(\w+)', user_input).group(1)
+        # TODO: Add error handling if group doesn't exist
+        refresh_token = re.search(r'refresh_token=(\w+)', user_input).group(1)
         self._configuration.access_token = access_token
         self._configuration.refresh_token = refresh_token
         self._configuration.save()
