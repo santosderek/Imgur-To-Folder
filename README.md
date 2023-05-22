@@ -1,30 +1,25 @@
-![Dyrenex Software](Dyrenex_Software.png)
+<h1 align="center">Imgur -> 📁</h1>
+<p align="center">Download Imgur albums and images to desired folder with one command.</p>
 
-# Imgur-To-Folder
-Download Imgur albums and images to desired folder with one command.
+## Example usage
 
----
+As mentioned above, the base command is `itf` or `imgurtofolder`. For the remainder of the readme, we'll be using `itf` as the base command.
 
-### Dependencies
+*Example URLs are non-affiliated with the Imgur-To-Folder project.*
+
+```bash
+$ itf https://imgur.com/gallery/IhX0P # Download Galleries
+$ itf https://i.imgur.com/4clqUdj.jpeg # Download direct images
+```
+
+## Dependencies
 
 Tested with:
 
 - `Python` >= 3.9
-- `pip >= 20.3.0`
+- `pip` >= 20.3.0
 
-
-### Example usage
-
-As mentioned above, the base command is `itf` or `imgurtofolder`. For the remainder of the readme, we'll be using `itf` as the base command.
-
-Example URLs are non-affiliated with the Imgur-To-Folder project.
-
-```bash
-$ itf https://imgur.com/gallery/IhX0P
-$ itf https://i.imgur.com/4clqUdj.jpeg
-```
-
-### Installation:
+## Installation:
 
 Start by cloning and installing the package using [`git`](https://git-scm.com/) and [`pip`](https://pypi.org/project/pip/).
 
@@ -80,10 +75,10 @@ Next, either login to, or create an Imgur account at http://imgur.com/.
 Now go to https://api.imgur.com/oauth2/addclient and create a new application using the following configuration:
 
 | Config item | Expected value |
-| ---- | ---- |
+| ----------- | -------------- |
 | Application Name | name of your choice |
 | Authorization Type | OAuth 2 Authorization without a callback URL |
-| Application website | <blank> |
+| Application website | \<blank\> |
 | Email | Your email |
 | Description | Any description you want to keep |
 
@@ -94,11 +89,11 @@ Lastly, you should be prompted for a download path. Give the path you would like
 
 Congrats! It's installed. Now you can run the `itf` or `imgurtofolder` to start downloading!
 
-### Authentication Setup For Account Access (Only needed to download favorites)
+## Authentication Setup For Account Access (Only needed to download favorites)
 
 To access your favorites, you must first permit this application to access your account. Again, this application does not store user name or passwords. This is the purpose of OAuth.
 
-In order to do so, run either the `imgurtofolder --list-all-favorites [username]` command, or the `imgurtofolder --download-favorites [username]` command with your username replacing `[username]`.
+In order to do so, run either the `itf --list-all-favorites [username]` command, or the `itf --download-favorites [username]` command with your username replacing `[username]`.
 
 A message will appear asking the user to visit a specified url and log in. This page takes you to Imgur to authenticate Imgur-To-Folder, and allow the program to view your favorites.
 
@@ -112,13 +107,13 @@ You should now be able to list and download your Imgur favorites.
 
 This step will no longer be needed for future favorites / account downloads after install.
 
-### Imgur Rate Limiting.
+## Imgur Rate Limiting.
 
 "The Imgur API uses a credit allocation system to ensure fair distribution of capacity. Each application can allow approximately 1,250 uploads per day or approximately 12,500 requests per day. If the daily limit is hit five times in a month, then the app will be blocked for the rest of the month."
 
 \- [Imgur Offical Documentation](https://apidocs.imgur.com/)
 
-### Clarification
+## Clarification
 
 *Imgur-To-Folder does NOT store any username or password data. This is what the client_id and client_secret are for.*
 
