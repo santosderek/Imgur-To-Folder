@@ -20,6 +20,12 @@ class OAuth:
         self._configuration = configuration
 
     def authorize(self):
+        """
+        Authorize the application to access the users account
+
+        Raises:
+            ValueError: If the user does not provide the correct input
+        """
         url = (
             'https://api.imgur.com/oauth2/authorize?'
             'response_type=token'
@@ -38,12 +44,16 @@ class OAuth:
         user_input = str(input("Paste the redirected url here: "))
 
         # Save access_token and refresh_token to users config
-        # TODO: Add error handling if group doesn't exist
-        access_token = re.search(r'access_token=(\w+)', user_input).group(1)
-        # TODO: Add error handling if group doesn't exist
-        refresh_token = re.search(r'refresh_token=(\w+)', user_input).group(1)
-        self._configuration.access_token = access_token
-        self._configuration.refresh_token = refresh_token
+        search: Optional[re.Match] = re.search(r'access_token=(\w+)', user_input)
+        if not search:
+            raise ValueError('Could not find access_token in user input')
+        self._configuration.access_token = search.group(1)
+
+        search: Optional[re.Match] = re.search(r'refresh_token=(\w+)', user_input)
+        if not search:
+            raise ValueError('Could not find refresh_token in user input')
+        self._configuration.refresh_token = search.group(1)
+
         self._configuration.save()
         logger.debug('Configuration saved')
         logger.info('The application is now authorized')
@@ -63,7 +73,6 @@ class OAuth:
                                     allow_redirects=False)
         response_json = response.json()
 
-        # TODO: Make sure this works
         self._configuration.access_token = response_json['access_token']
 
 
@@ -134,8 +143,7 @@ class ImgurAPI:
         if return_raw_response:
             return response
 
-        if not (response.status_code == 200):
-            _raise_exception_given_response(response)
+        response.raise_for_status()
 
         try:
             return response.json()

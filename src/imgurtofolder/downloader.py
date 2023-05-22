@@ -81,8 +81,13 @@ def parse_id(url: str) -> Optional[ImgurObjectResponse]:
             type=ImgurObjectType.TAG
         )
 
+    search: Optional[re.Match] = re.search(IMGUR_BASE_EXTENSIONS['image'][0], url)
+
+    if not search:
+        raise ValueError('Could not find image id in url')
+
     return ImgurObjectResponse(
-        id=re.search(IMGUR_BASE_EXTENSIONS['image'][0], url).group(3),
+        id=search.group(3),
         type=ImgurObjectType.IMAGE
     )
 

@@ -28,4 +28,3 @@ def test_get_album_metadata(mock_imgur_api):
             'type': 'image/jpeg',
         }
     ]
-    

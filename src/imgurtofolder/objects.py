@@ -6,7 +6,7 @@ from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from pprint import pformat
-from typing import Optional
+from typing import Dict, Optional
 
 import requests
 
@@ -81,7 +81,6 @@ class Downloadable(ABC):
             """
 
             items = []
-
             _page = starting_page
 
             while response := self.get_metadata(page=_page):
@@ -138,7 +137,7 @@ class Image(Downloadable):
     Class which holds all the methods for downloading images.
     """
 
-    def get_metadata(self, **kwargs) -> dict:
+    def get_metadata(self, **kwargs) -> Dict:
         """
         Gets the metadata for the image using the API.
 
@@ -152,7 +151,7 @@ class Image(Downloadable):
             }
         ).get('data')
 
-    async def download(self, path: Optional[str] = None, overwrite: bool = False, enumeration: Optional[int] = None):
+    async def download(self, path: Optional[str] = None, overwrite: bool = False, enumeration: Optional[int] = None) -> None:
         """
         Downloads a file from a url to a path
 
@@ -167,7 +166,7 @@ class Image(Downloadable):
         metadata = self.get_metadata()
 
         _title = metadata.get('title') or metadata.get('id')
-        suffix = Path(metadata.get('link')).suffix
+        suffix = Path(metadata.get('link', '')).suffix
         _filename = f"{_title}{(' - ' + str(enumeration)) if enumeration else ''}{suffix}"
 
         _url = metadata.get('link')
