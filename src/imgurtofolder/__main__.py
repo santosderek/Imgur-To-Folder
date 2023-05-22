@@ -142,9 +142,10 @@ def main():
     config = fetch_configuration(args)
 
     log.debug('Reacting to args')
+
     if args.verbose:
-        # TODO: set all the loggers to debug
-        ...
+        # set root logger to debug
+        getLogger().setLevel('DEBUG')
 
     if args.print_download_path:
         log.info(f'Default download path: {config.download_path}')

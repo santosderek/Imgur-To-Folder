@@ -165,6 +165,8 @@ class Image(Downloadable):
 
         metadata = self.get_metadata()
 
+        await asyncio.sleep(.1)
+
         _title = metadata.get('title') or metadata.get('id')
         suffix = Path(metadata.get('link', '')).suffix
         _filename = f"{_title}{(' - ' + str(enumeration)) if enumeration else ''}{suffix}"
@@ -187,18 +189,10 @@ class Image(Downloadable):
             logger.info(f'Skipping {_full_path} because it already exists')
             return
 
-        response: requests.Response = self.api.get(
-            _url,
-            return_raw_response=True,
-            stream=True
-        )
+        response: requests.Response = self.api.get(_url, return_raw_response=True, stream=True)
+        response.raise_for_status()
 
-        if response.status_code != 200:
-            logger.error('Error downloading image: %s' % pformat(response.json()))
-            raise ValueError(f'Error downloading image: {self.id}')
-
-        file_size = \
-            int(response.headers.get('content-length', 0)) / float(1 << 20)
+        file_size = int(response.headers.get('content-length', 0)) / float(1 << 20)
 
         logger.info('\t%s, File Size: %.2f MB' % (_full_path, file_size))
 
@@ -208,7 +202,6 @@ class Image(Downloadable):
 
         del response  # Dealocate the meemory used in order to stream the file while we wait
         # Placing a sleep here to prevent rate limiting while I implement a better way in the future with some Queue, etc.
-        await asyncio.sleep(.1)
 
 
 class Album(Downloadable):
