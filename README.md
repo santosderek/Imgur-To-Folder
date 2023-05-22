@@ -3,11 +3,6 @@
 # Imgur-To-Folder
 Download Imgur albums and images to desired folder with one command.
 
-![Gif of an example](https://giant.gfycat.com/AccurateHarmfulAmericanalligator.gif)
-
-[Webm of an example](https://giant.gfycat.com/AccurateHarmfulAmericanalligator.webm)
-
-
 ---
 
 ### Dependencies
