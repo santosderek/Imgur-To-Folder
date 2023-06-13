@@ -6,3 +6,4 @@ __pycache__
 config.json
 venv
 image_test.py
+.python-version

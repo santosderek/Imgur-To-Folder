@@ -3,7 +3,10 @@ from typing import Dict
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
+
 from imgurtofolder.objects import Tag
+from tests.awaitables import cast_as_awaitable
 from tests.generate import generate_hash, generate_item
 
 
@@ -31,16 +34,17 @@ def generate_tag(tag: str, number_of_items: int = 3) -> Dict:
     }
 
 
+@pytest.mark.asyncio
 @patch('imgurtofolder.objects.ImgurAPI')
-def test_get_image_metadata(mock_imgur_api):
+async def test_get_image_metadata(mock_imgur_api):
 
     _tag = generate_tag('test')
 
-    mock_imgur_api.get.return_value = {
+    mock_imgur_api.get.return_value = cast_as_awaitable({
         'data': _tag,
-    }
+    })
 
-    image_metadata = Tag('12345678', mock_imgur_api).get_metadata()
+    image_metadata = await Tag('12345678', mock_imgur_api).get_metadata()
 
     assert len(image_metadata['items']) == 3
 

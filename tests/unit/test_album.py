@@ -1,11 +1,16 @@
-from imgurtofolder.objects import Album
 from unittest.mock import patch
 
+import pytest
 
+from imgurtofolder.objects import Album
+
+from tests.awaitables import cast_as_awaitable
+
+@pytest.mark.asyncio
 @patch('imgurtofolder.objects.ImgurAPI')
-def test_get_album_metadata(mock_imgur_api):
+async def test_get_album_metadata(mock_imgur_api):
 
-    mock_imgur_api.get.return_value = {
+    mock_imgur_api.get.return_value = cast_as_awaitable({
         'data': {
             'images': [
                 {
@@ -16,9 +21,9 @@ def test_get_album_metadata(mock_imgur_api):
                 }
             ]
         }
-    }
+    })
 
-    image_metadata = Album('12345678', mock_imgur_api).get_metadata()
+    image_metadata = await Album('12345678', mock_imgur_api).get_metadata()
 
     assert image_metadata.get('images') == [
         {

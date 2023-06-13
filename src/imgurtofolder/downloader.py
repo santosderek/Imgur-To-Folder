@@ -188,4 +188,4 @@ async def download_account_images(username: str, api: ImgurAPI, starting_page: i
         max_items (int): The maximum number of items to download
     """
     account_images = await Account(username, api).get_account_images(username, starting_page=starting_page, max_items=max_items)
-    await download_urls([image['link'] for image in account_images], api)
+    await download_urls([image['link'] for image in account_images if 'link' in image], api)

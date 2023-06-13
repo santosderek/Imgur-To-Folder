@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from enum import Enum
 from logging import getLogger
 from pathlib import Path
-from pprint import pformat
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import requests
 
@@ -57,7 +56,7 @@ class Downloadable(ABC):
         self.api = api
 
     @abstractmethod
-    def get_metadata(self, **kwargs):
+    async def get_metadata(self, **kwargs):
         """
         Gets the metadata for the object using the API.
         """
@@ -72,7 +71,7 @@ class Downloadable(ABC):
             max_items (int): The maximum number of items to return
         """
 
-        def get_items():
+        async def get_items():
             """
             Gets all items from current id.
 
@@ -83,7 +82,7 @@ class Downloadable(ABC):
             items = []
             _page = starting_page
 
-            while response := self.get_metadata(page=_page):
+            while response := await self.get_metadata(page=_page):
 
                 _items = response
 
@@ -104,7 +103,7 @@ class Downloadable(ABC):
             return items[:max_items]
 
         logger.debug(f'Getting {self.__class__.__name__} details')
-        items = get_items()
+        items = await get_items()
 
         futures = []
         for item in items:
@@ -137,40 +136,38 @@ class Image(Downloadable):
     Class which holds all the methods for downloading images.
     """
 
-    def get_metadata(self, **kwargs) -> Dict:
+    async def get_metadata(self, **kwargs) -> Optional[dict]:
         """
         Gets the metadata for the image using the API.
 
         Returns:
             dict: The metadata for the image
         """
-        return self.api.get(
+
+        meta = await self.api.get(
             url=f"image/{self.id}",
             headers={
                 "Authorization": f"Client-ID {self.api._configuration.client_id}",
             }
-        ).get('data')
+        )
+        return (meta or {}).get('data')
 
-    async def download(self, path: Optional[str] = None, overwrite: bool = False, enumeration: Optional[int] = None) -> None:
+    async def download(self, path: Optional[str] = None, enumeration: Optional[int] = None) -> None:
         """
         Downloads a file from a url to a path
 
         Parameters:
-            overwrite (bool): If True, overwrite existing files
             kwargs: Additional arguments
 
         Raises:
             ValueError: If the response code is not 200
         """
 
-        metadata = self.get_metadata()
-
-        await asyncio.sleep(.1)
+        metadata = await self.get_metadata()
 
         _title = metadata.get('title') or metadata.get('id')
         suffix = Path(metadata.get('link', '')).suffix
         _filename = f"{_title}{(' - ' + str(enumeration)) if enumeration else ''}{suffix}"
-
         _url = metadata.get('link')
 
         _path = Path(
@@ -185,11 +182,19 @@ class Image(Downloadable):
 
         _full_path = _path / _filename
 
-        if not overwrite and _full_path.exists():
+        if not self.api._configuration.overwrite and _full_path.exists():
             logger.info(f'Skipping {_full_path} because it already exists')
             return
 
-        response: requests.Response = self.api.get(_url, return_raw_response=True, stream=True)
+        response: requests.Response = await self.api.get(
+            _url,
+            return_raw_response=True,
+            include_default_headers=False,
+            stream=True,
+            headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0',
+            }
+        )
         response.raise_for_status()
 
         file_size = int(response.headers.get('content-length', 0)) / float(1 << 20)
@@ -200,8 +205,7 @@ class Image(Downloadable):
             response.raw.decode_content = True
             shutil.copyfileobj(response.raw, image_file)
 
-        del response  # Dealocate the meemory used in order to stream the file while we wait
-        # Placing a sleep here to prevent rate limiting while I implement a better way in the future with some Queue, etc.
+        del response  # Dealocate the memory used in order to stream the file while we wait
 
 
 class Album(Downloadable):
@@ -209,26 +213,24 @@ class Album(Downloadable):
     Class which holds all the methods for downloading albums.
     """
 
-    def get_metadata(self, **kwargs) -> dict:
+    async def get_metadata(self, **kwargs) -> Optional[dict]:
         """
         Gets the metadata for the image using the API.
 
         Returns:
             dict: The metadata for the image
         """
-        # TODO: Regex could be better
-        # _hash = re.search(r"(https?)?(.*\.com\/)(\w+)(\..*)?$", self.url).group(3)
-
-        return self.api.get(
+        meta = await self.api.get(
             url=f"album/{self.id}",
             headers={
                 "Authorization": f"Client-ID {self.api._configuration.client_id}",
             }
-        ).get('data')
+        )
+        return (meta or {}).get('data')
 
-    async def download(self, overwrite: bool = False):
+    async def download(self):
 
-        metadata = self.get_metadata()
+        metadata = await self.get_metadata()
 
         _title = replace_characters(metadata.get('title') or metadata.get('id'))
         _path = Path(self.api._configuration.download_path) / _title
@@ -249,7 +251,6 @@ class Album(Downloadable):
                         api=self.api
                     ).download(
                         path=_path,
-                        overwrite=overwrite,
                         enumeration=position
                     )
                 )
@@ -262,19 +263,21 @@ class Gallery(Album):
     Class which holds all the methods for downloading galleries.
     """
 
-    def get_metadata(self, **kwargs):
+    async def get_metadata(self, **kwargs) -> Optional[dict]:
         """
         Gets the metadata for the image using the API.
 
         Returns:
             dict: The metadata for the image
         """
-        return self.api.get(
+
+        meta = await self.api.get(
             f'gallery/{self.id}',
             headers={
                 'Authorization': 'Client-ID %s' % self.api._configuration.client_id
             }
-        ).get('data')
+        )
+        return (meta or {}).get('data')
 
 
 class Tag(Downloadable):
@@ -291,7 +294,7 @@ class Tag(Downloadable):
         self.id = id
         self.api = api
 
-    def get_metadata(self, sort='top', window='week', page=0):
+    async def get_metadata(self, sort: str = 'top', window: str = 'week', page: int = 0):
         """
         Gets the metadata for the image using the API.
 
@@ -301,12 +304,14 @@ class Tag(Downloadable):
             page (int): The page number to start on
         """
         logger.info(f'Getting page {page} of favorites')
-        return self.api.get(
+
+        meta = await self.api.get(
             f'gallery/t/{self.id}/{sort}/{window}/{page}',
             headers={
                 'Authorization': 'Client-ID %s' % self.api._configuration.client_id
             }
-        ).get('data')
+        )
+        return (meta or {}).get('data')
 
 
 class Subreddit(Downloadable):
@@ -314,7 +319,7 @@ class Subreddit(Downloadable):
     Class which holds all the methods for downloading subreddits.
     """
 
-    def get_metadata(self, sort: str = 'time', window: str = 'day', page: int = 0):
+    async def get_metadata(self, sort: str = 'time', window: str = 'day', page: int = 0) -> Optional[dict]:
         """
         Gets the metadata for the image using the API.
 
@@ -323,15 +328,15 @@ class Subreddit(Downloadable):
             window (str): The window of the sort order
             page (int): The page number to start on
         """
-
-        return self.api.get(
+        meta = await self.api.get(
             f'gallery/r/{self.id}/{sort}/{window}/{page}',
             headers={
                 'Authorization': 'Client-ID %s' % self.api._configuration.client_id
             }
-        ).get('data')
+        )
+        return (meta or {}).get('data')
 
-    def get_image(self, subreddit: str, image_id: str):
+    async def get_image(self, subreddit: str, image_id: str) -> Optional[dict]:
         """
         Gets the metadata for the image using the API.
 
@@ -339,15 +344,15 @@ class Subreddit(Downloadable):
             subreddit (str): The subreddit to get the image from
             image_id (str): The id of the image
         """
-
-        return self.api.get(
+        meta = await self.api.get(
             f'gallery/r/{subreddit}/{image_id}',
             headers={
                 'Authorization': 'Client-ID %s' % self.api._configuration.client_id
             }
-        ).get('data')
+        )
+        return (meta or {}).get('data')
 
-    async def download_from_subreddit(self, subreddit: str):
+    async def download_from_subreddit(self, subreddit: str) -> None:
         """
         Downloads an image from a subreddit
 
@@ -355,13 +360,15 @@ class Subreddit(Downloadable):
             subreddit (str): The subreddit to get the image from
         """
 
-        logger.debug('Getting subreddit gallery details')
-        subreddit_album = self.get_image(subreddit, self.id)
+        # FIXME: Half initailized module
+        from imgurtofolder.downloader import download_urls
 
-        await Album(
-            id=subreddit_album['id'],
-            api=self.api
-        ).download()
+        logger.debug('Getting subreddit gallery details')
+        subreddit = await self.get_image(subreddit, self.id)
+
+        # TODO: This could be more efficient if we use the already fetched data instead of providing the link again
+        await download_urls([item.get('link') for item in subreddit], self.api)
+
 
 ##### Account #####
 
@@ -372,7 +379,7 @@ class Account:
         self.username = username
         self.api = api
 
-    def get_account_submissions(self):
+    async def get_account_submissions(self) -> list:
         """
         Get all submissions from an account
 
@@ -382,14 +389,16 @@ class Account:
         Returns:
             list: A list of all submissions from the account
         """
-        return self.api.get(
+
+        meta = await self.api.get(
             f'account/{self.username}/submissions/',
             {
                 'Authorization': 'Client-ID %s' % self.api._configuration.client_id,
             }
         )
+        return meta or []
 
-    async def get_account_favorites(self, username, sort='newest', page=0, max_items=-1):
+    async def get_account_favorites(self, username: str, sort: str = 'newest', page: int = 0, max_items: int = -1) -> list:
         """
         Get all favorites from an account
 
@@ -413,28 +422,28 @@ class Account:
                 sort (str): The sort order of the favorites
             """
             logger.info(f'Getting page {page} of favorites')
-            _response = self.api.get(
+            meta = await self.api.get(
                 f'account/{username}/favorites/{page}/{sort}',
                 headers={
                     'Authorization': f'Bearer {self.api._configuration.access_token}',
                 }
-            ).get('data')
-            await asyncio.sleep(.05)
-            return _response
+            )
+            return (meta or {}).get('data')
 
         favorites = []
 
         while len(response := await _get_next_page(username, page, sort)) != 0:
 
+            favorites.extend(response)
+
             if len(favorites) > max_items:
                 return favorites[:max_items]
 
-            favorites.extend(response)
             page += 1
 
         return favorites
 
-    async def get_account_images(self, username: str, starting_page: int = 0, max_items: Optional[int] = None):
+    async def get_account_images(self, username: str, starting_page: int = 0, max_items: Optional[int] = None) -> list:
         """
         Get all images from an account
 
@@ -446,18 +455,19 @@ class Account:
             list: A list of all images from the account
         """
 
-        def _get_next_page(_page):
-            return self.api.get(
+        async def _get_next_page(_page):
+            meta = await self.api.get(
                 f'account/{username}/images/{_page}',
                 headers={
                     'Authorization': f'Bearer {self.api._configuration.access_token}',
                 }
             )
+            return meta.get('data') or []
 
         account_images = []
         page = starting_page
 
-        while len(response := _get_next_page(page)) != 0:
+        while len(response := await _get_next_page(page)) != 0:
             account_images.extend(response)
 
             if max_items is not None and len(account_images) > max_items:
@@ -466,7 +476,7 @@ class Account:
 
         return account_images
 
-    async def get_gallery_favorites(self, username: str, starting_page: int = 0, sort: str = 'newest'):
+    async def get_gallery_favorites(self, username: str, starting_page: int = 0, sort: str = 'newest') -> list:
         """
         Get all gallery favorites from an account
 
@@ -477,9 +487,11 @@ class Account:
         Returns:
             list: A list of all gallery favorites from the account
         """
-        return self.api.get(
+
+        meta = await self.api.get(
             f'account/{username}/gallery_favorites/{starting_page}/{sort}',
             headers={
                 'Authorization': 'Client-ID %s' % self.api._configuration.client_id,
             }
         )
+        return meta or []

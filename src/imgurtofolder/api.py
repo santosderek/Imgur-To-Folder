@@ -1,9 +1,11 @@
+import asyncio
 import re
 import webbrowser
 from copy import deepcopy
+from datetime import datetime, timedelta
 from logging import getLogger
 from pprint import pformat
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Union
 from urllib.parse import urljoin
 
 import requests
@@ -58,7 +60,7 @@ class OAuth:
         logger.debug('Configuration saved')
         logger.info('The application is now authorized')
 
-    def generate_access_token(self):
+    def generate_access_token(self, headers: Optional[Dict[str, str]] = None):
         url = 'https://api.imgur.com/oauth2/token'
 
         response = requests.request('POST',
@@ -97,6 +99,8 @@ class ImgurAPI:
     API_PREFIX = '/3/'
 
     _singleton_instance = None
+    _last_request_time: datetime = datetime.now()
+    _buffer_time_between_requests: timedelta = timedelta(milliseconds=100)
 
     def __new__(cls, *args, **kwargs):
         if not cls._singleton_instance:
@@ -108,14 +112,15 @@ class ImgurAPI:
         self._oauth = OAuth(configuration)
         self.base_url = urljoin(self.BASE_URL, self.API_PREFIX)
 
-    def _make_request(
+    async def _make_request(
             self,
             method: str,
             url: str,
             headers: Optional[Dict[str, str]] = None,
             return_raw_response: bool = False,
+            include_default_headers: bool = True,
             **kwargs
-    ):
+    ) -> Union[dict[str, Any], list[Any], requests.Response, None]:
         """
         Make a request to the Imgur API
 
@@ -130,7 +135,12 @@ class ImgurAPI:
             [dict | requests.Response]: The response from the API
         """
 
-        _headers = deepcopy(self.DEFAULT_HEADERS)
+        if datetime.now() - self._last_request_time < self._buffer_time_between_requests:
+            await asyncio.sleep(.1)
+
+        self._last_request_time = datetime.now()
+
+        _headers = deepcopy(self.DEFAULT_HEADERS) if include_default_headers else {}
         _headers.update(headers or {})
 
         response = requests.request(
@@ -150,7 +160,7 @@ class ImgurAPI:
         except requests.exceptions.JSONDecodeError:
             _raise_exception_given_response(response)
 
-    def get(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
+    async def get(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs) -> Union[dict, list, requests.Response, None]:
         """
         Make a GET request to the Imgur API
 
@@ -162,9 +172,9 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        return self._make_request('GET', url, headers=headers, **kwargs)
+        return await self._make_request('GET', url, headers=headers, **kwargs)
 
-    def post(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
+    async def post(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs) -> Union[dict, list, requests.Response, None]:
         """
         Make a POST request to the Imgur API
 
@@ -176,9 +186,9 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        return self._make_request('POST', url, headers=headers, **kwargs)
+        return await self._make_request('POST', url, headers=headers, **kwargs)
 
-    def delete(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
+    async def delete(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs) -> Union[dict, list, requests.Response, None]:
         """
         Make a DELETE request to the Imgur API
 
@@ -190,9 +200,9 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        return self._make_request('DELETE', url, headers=headers, **kwargs)
+        return await self._make_request('DELETE', url, headers=headers, **kwargs)
 
-    def put(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs):
+    async def put(self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs) -> Union[dict, list, requests.Response, None]:
         """
         Make a PUT request to the Imgur API
 
@@ -204,4 +214,4 @@ class ImgurAPI:
         Returns:
             [dict | requests.Response]: The response from the API
         """
-        return self._make_request('PUT', url, headers=headers, **kwargs)
+        return await self._make_request('PUT', url, headers=headers, **kwargs)

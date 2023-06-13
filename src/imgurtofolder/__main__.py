@@ -164,12 +164,24 @@ def main():
     api = ImgurAPI(config)
 
     if args.list_all_favorites is not None:
-        asyncio.run(
-            Account(
-                username='me',
-                api=api
-            ).get_account_favorites('me')
-        )
+
+        async def list_all_favorites():
+
+            _page: int = 0
+
+            while len(
+                    favorites := await Account(
+                        username='me',
+                        api=api
+                    ).get_account_favorites('me', page=_page)
+            ) > 0:
+
+                _page += 1
+
+                for favorite in favorites:
+                    log.info(f"{favorite.get('id')} - {favorite.get('title') or '<no title>'} - {favorite.get('link')}")
+
+        asyncio.run(list_all_favorites())
 
     asyncio.run(download_urls(args.urls, api))
 
@@ -177,19 +189,25 @@ def main():
         log.debug(
             f'Downloading favorites by {"Oldest" if args.oldest else "Latest" }'
         )
-        download_favorites(
-            args.download_favorites,
-            sort='newest' if args.oldest else 'latest',
-            page=args.start_page,
-            max_items=args.max_downloads
+        asyncio.run(
+            download_favorites(
+                args.download_favorites,
+                api=api,
+                sort='newest' if args.oldest else 'latest',
+                starting_page=args.start_page,
+                max_items=args.max_downloads
+            )
         )
 
     if args.download_account_images is not None:
         log.debug('Downloading account images')
-        download_account_images(
-            args.download_account_images,
-            page=args.start_page,
-            max_items=args.max_downloads
+        asyncio.run(
+            download_account_images(
+                args.download_account_images,
+                api=api,
+                starting_page=args.start_page,
+                max_items=args.max_downloads
+            )
         )
 
     log.info('Done.')
