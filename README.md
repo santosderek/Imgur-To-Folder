@@ -1,150 +1,99 @@
-![Dyrenex Software](Dyrenex_Software.png)
+<h1 align="center">Imgur -> 📁</h1>
+<p align="center">Download Imgur albums and images to desired folder with one command.</p>
 
-# Imgur-To-Folder
-Download Imgur albums and images to desired folder with one command.
+## Example usage
 
-![Gif of an example](https://giant.gfycat.com/AccurateHarmfulAmericanalligator.gif)
+As mentioned above, the base command is `itf` or `imgurtofolder`. For the remainder of the readme, we'll be using `itf` as the base command.
 
-[Webm of an example](https://giant.gfycat.com/AccurateHarmfulAmericanalligator.webm)
+*Example URLs are non-affiliated with the Imgur-To-Folder project.*
 
+```bash
+$ itf https://imgur.com/gallery/IhX0P # Download Galleries
+$ itf https://i.imgur.com/4clqUdj.jpeg # Download direct images
+```
 
----
+## Dependencies
 
-### How to install:
+Tested with:
 
-*Repository developed using Python 3*
+- `Python` >= 3.9
+- `pip` >= 20.3.0
 
-*Copy repository from github:*
+## Installation:
 
-    git clone https://github.com/santosderek/Imgur-To-Folder
-    cd Imgur-To-Folder
+Start by cloning and installing the package using [`git`](https://git-scm.com/) and [`pip`](https://pypi.org/project/pip/).
 
-*Next within the command-line type: (and within the Imgur-To-Folder folder)*
+```bash
+$ git clone https://github.com/santosderek/Imgur-To-Folder
+$ cd Imgur-To-Folder
+$ pip install .
+```
 
-    python3 setup.py install
+The package can be ran using included console script entrypoints. The entrypoint command is either `itf` or `imgurtofolder`:
 
-*Start inital setup by typing `itf` or `imgurtofolder` in the commandline
+```bash
+$ itf -h
+usage: itf [-h] [--folder PATH] [--change-default-folder PATH] [--download-favorites USERNAME] [--oldest] [--download-account-images USERNAME] [--max-downloads NUMBER_OF_MAX] [--start-page STARTING_PAGE] [--list-all-favorites USERNAME] [--print-download-path]
+           [--overwrite] [--sort {time,top}] [--window {day,week,month,year,all}] [-v]
+           [URLS ...]
 
-    itf
+Download images off Imgur to a folder of your choice!
 
-*You should be prompted for a client_id. Ignore this for now, but don't leave setup.*
+positional arguments:
+  URLS                  Automatically detect urls
 
-*Next, create an Imgur account at http://imgur.com/ or log in if you have one already.*
+optional arguments:
+  -h, --help            show this help message and exit
+  --folder PATH, -f PATH
+                        Change desired folder path
+  --change-default-folder PATH
+                        Change the default desired folder path
+  --download-favorites USERNAME, -df USERNAME
+                        Username to download favorites of. Default: latest
+  --oldest              Sort favorites by oldest.
+  --download-account-images USERNAME, -dai USERNAME
+                        Download account images to folder
+  --max-downloads NUMBER_OF_MAX
+                        Specify the max number of favorites to download
+  --start-page STARTING_PAGE
+                        Specify the starting page number for fravorites
+  --list-all-favorites USERNAME, -lf USERNAME
+                        List all favorites of a specified user
+  --print-download-path
+                        Print default download path.
+  --overwrite           Write over existing content. (Disables skipping.)
+  --sort {time,top}     How to sort subreddit time duration.
+  --window {day,week,month,year,all}
+                        Window of time for the sort method when using subreddit links. (Append "--sort top")
+  -v, --verbose         Enables debugging output.
+```
 
-*Now go to https://api.imgur.com/oauth2/addclient and create a new application using a name of your choice, and the authorization type of:*
+During first installation you'll be prompted for a client_id. Ignore this for now, but don't leave setup.
 
-* OAuth 2 Authorization without a callback URL
+Next, either login to, or create an Imgur account at http://imgur.com/.
 
-*Complete the rest of the form.*
+Now go to https://api.imgur.com/oauth2/addclient and create a new application using the following configuration:
 
-*Back in the terminal paste your client_id and press enter.*
+| Config item | Expected value |
+| ----------- | -------------- |
+| Application Name | name of your choice |
+| Authorization Type | OAuth 2 Authorization without a callback URL |
+| Application website | \<blank\> |
+| Email | Your email |
+| Description | Any description you want to keep |
 
-*Now you should be prompted for a client_secret; paste your client_secret given by imgur and press enter.*
 
-*Lastly, you should be prompted for a download path; Give any download path for ITF to download to.*
+Once completed, you'll be given a `client_id` and `client_secret`. Head back to the terminal and paste these values where prompted.
 
-*Congrats! It's installed. Now you can run the `itf` or `imgurtofolder` to start downloading! See below for more arguments, or use `itf -h`.*
+Lastly, you should be prompted for a download path. Give the path you would like to use as default when downloading images.
 
-***
+Congrats! It's installed. Now you can run the `itf` or `imgurtofolder` to start downloading!
 
-### How to use:
-
-Base command:
-
-    imgurtofolder
-
-Or for simplicity, you can use:
-
-    itf
-
-*All commands below can be used with either base command.*
-
-#### Inital setup
-
-By running `itf` or `imgurtofolder` without a config file in the location specified in `__main__.py`, imgur to folder will prompt for a cliend_id, cliend_secret, and download path.
-
-#### Following commands can be used:
-***Help page***
-
-    imgurtofolder --help
-
-***Automatic Url Detection***
-
-*Automatically downloads Imgur links without user specifically declaring the Imgur type, as opposed to earlier versions.*
-
-    imgurtofolder [urls]
-
-***Temporary change folder path to download***
-
-    imgurtofolder --folder FOLDER-PATH-HERE
-    | OR |
-    imgurtofolder -f  FOLDER-PATH-HERE
-
-***Download all account images within your profile***
-
-*Please see below for authenticating setup.*
-
-    imgurtofolder --download-account-images
-    | OR |
-    imgurtofolder -dai
-
-***List all favorited Imgur links within your profile***
-
-*Please see below for authenticating setup.*
-
-    imgurtofolder --list-all-favorites [username]
-    | OR |
-     imgurtofolder -lf [username]
-
-***Download favorited Imgur links within your profile***
-
-*Please see below for authenticating setup.*
-
-*Download all favorites in order of latest.*
-
-    imgurtofolder --download-favorites [username]
-    | OR |
-    imgurtofolder -df [username]
-
-*To limit number of favorites to download use `--max-favorites`:*
-
-    imgurtofolder --download-favorites [username] --max-favorites [maximum_number_of_favorites]
-
-*To sort by time or top of all use `--sort`*
-
-    imgurtofolder --download-favorites [username] --sort time
-    | OR |
-    imgurtofolder --download-favorites [username] --sort top
-
-*When sorting by time select `--window`*
-
-    imgurtofolder --download-favorites --window {day,week,month,year,all}
-
-*To print download path use `--print-download-path`*
-
-    imgurtofolder --print-download-path  
-
-***Over-write existing files (disables skipping)***
-
-*To over-write existing files use `--overwrite`*
-
-    imgurtofolder [URLS] --overwrite
-
-***Enable debugging output***
-
-*To enable debugging output use `--verbose`*
-
-    imgurtofolder [URLS] --verbose
-
-### Running first time Setup
-
-There is now a first time setup sequence that happens when a config file is not found in, by default, "~/.config/imgurToFolder/config.json". This config location can be changed in "\_\_main\_\_.py". Once the a user has finished setup a config file will be generated in the selected path.
-
-### Authentication Setup For Account Access (Only needed to download favorites)
+## Authentication Setup For Account Access (Only needed to download favorites)
 
 To access your favorites, you must first permit this application to access your account. Again, this application does not store user name or passwords. This is the purpose of OAuth.
 
-In order to do so, run either the `imgurtofolder --list-all-favorites [username]` command, or the `imgurtofolder --download-favorites [username]` command with your username replacing `[username]`.
+In order to do so, run either the `itf --list-all-favorites [username]` command, or the `itf --download-favorites [username]` command with your username replacing `[username]`.
 
 A message will appear asking the user to visit a specified url and log in. This page takes you to Imgur to authenticate Imgur-To-Folder, and allow the program to view your favorites.
 
@@ -158,13 +107,13 @@ You should now be able to list and download your Imgur favorites.
 
 This step will no longer be needed for future favorites / account downloads after install.
 
-### Imgur Rate Limiting.
+## Imgur Rate Limiting.
 
 "The Imgur API uses a credit allocation system to ensure fair distribution of capacity. Each application can allow approximately 1,250 uploads per day or approximately 12,500 requests per day. If the daily limit is hit five times in a month, then the app will be blocked for the rest of the month."
 
 \- [Imgur Offical Documentation](https://apidocs.imgur.com/)
 
-### Clarification
+## Clarification
 
 *Imgur-To-Folder does NOT store any username or password data. This is what the client_id and client_secret are for.*
 
