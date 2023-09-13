@@ -68,7 +68,7 @@ optional arguments:
   -v, --verbose         Enables debugging output.
 ```
 
-During first installation you'll be prompted for a client_id. Ignore this for now, but don't leave setup.
+After pip installing the package, run the `itf` command where you'll be prompted for a `client_id`. Ignore this for now, but don't leave setup.
 
 Next, either login to, or create an Imgur account at http://imgur.com/.
 
